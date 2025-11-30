@@ -1,0 +1,16 @@
+{
+  "CLIP_path": "xx",
+  "num_experts": 3,
+  "rank_per_expert": 4,
+  "moe_lambda_orth": 0.01,
+  "moe_lambda_balance": 0.1,
+  "moe_lambda_gating_cls": 0.1,
+  "moe_router_hidden_dim": 64,
+  "moe_top_k": 1,
+  "stage1_base_dir": "xx",
+  "experts_map": {
+    "0": "checkpoint-0.pth",
+    "1": "checkpoint-0.pth",
+    "2": "checkpoint-0.pth"
+  }
+}
