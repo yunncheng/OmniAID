@@ -73,7 +73,7 @@ We apply the reconstruction methodology from [AlignedForensics](https://github.c
 ### 🔸 Mirage-Test
 A challenging evaluation set containing images from held-out modern generators, optimized for high realism to rigorously test model generalization.
 
-[Download Link](https://drive.google.com/file/d/1oSlm_-9tN8cVmATeGDerzOwa_9nPtNu9/view?usp=sharing)
+[Download Link](https://drive.google.com/file/d/1-iGPbOkzGK-91LDyqeFSQefFPmZ41E2_/view)
 
 
 ## 📦 Model Zoo
