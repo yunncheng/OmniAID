@@ -185,6 +185,8 @@ def get_args_parser():
                         help="Use apex AMP (Automatic Mixed Precision) or not")
     
     # MoE Training Control
+    parser.add_argument('--is_hybrid', type=str2bool, default=True,
+                        help="Control whether to establish a fixed universal artifact expert.")
     parser.add_argument('--training_mode', type=str, default='standard',
                         choices=['standard', 'stage1_hard_sampling', 'stage2_router_training'],
                         help="Specifies the training mode. "
@@ -822,8 +824,13 @@ def run_standard_training(args):
     model, model_without_ddp, model_ema, n_parameters = create_model_and_ema(args, device)
     optimizer, criterion, loss_scaler, mixup_fn = create_optimizer_criterion_scaler(args, model_without_ddp)
 
-    # Load checkpoint if resuming standard training
-    if args.resume:
+    # Continue training
+    if args.pretrained_checkpoint:
+        checkpoint = torch.load(args.pretrained_checkpoint, map_location='cpu')
+        model_without_ddp.load_state_dict(checkpoint['model'], strict=True)
+
+    # Resume training
+    elif args.resume:
         utils.auto_load_model(args=args, model=model, model_without_ddp=model_without_ddp,
                               optimizer=optimizer, loss_scaler=loss_scaler, model_ema=model_ema)
     

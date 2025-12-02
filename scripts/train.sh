@@ -14,6 +14,7 @@ torchrun --nproc-per-node=$GPU_NUM main_finetune.py \
     --output_dir $OUTPUT_DIR \
     --log_dir $LOG_DIR/ \
     --moe_config_path "$MOE_CONFIG_PATH" \
+    --is_hybrid True \
     --training_mode "stage1_hard_sampling" \
     ${PY_ARGS}
 
@@ -26,6 +27,7 @@ torchrun --nproc-per-node=$GPU_NUM main_finetune.py \
     --output_dir $OUTPUT_DIR\
     --log_dir $LOG_DIR \
     --moe_config_path "$MOE_CONFIG_PATH" \
+    --is_hybrid True \
     --training_mode "stage2_router_training" \
     ${PY_ARGS}
 

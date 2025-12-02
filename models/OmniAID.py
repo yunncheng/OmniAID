@@ -42,7 +42,7 @@ class OmniAID(nn.Module):
         self.active_expert_idx = None
 
         # This property is fixed after initialization
-        self.is_hybrid = config.training_mode != 'standard'
+        self.is_hybrid = config.is_hybrid
 
         if self.is_hybrid:
             print("Initializing in HYBRID MoE architectural mode.")

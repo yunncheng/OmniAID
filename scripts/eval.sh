@@ -14,5 +14,5 @@ torchrun --nproc-per-node=$GPU_NUM main_finetune.py \
     --resume $RESUME \
     --moe_config_path $MOE_CONFIG_PATH \
     --eval True \
-    --training_mode "stage2_router_training" \
+    --is_hybrid True
     ${PY_ARGS}
