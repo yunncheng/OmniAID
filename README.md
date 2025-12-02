@@ -5,6 +5,7 @@
 [![Paper](https://img.shields.io/badge/arXiv-2511.08423-B31B1B.svg)](https://arxiv.org/abs/2511.08423)
 [![Hugging Face Models](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-yellow)](https://huggingface.co/Yunncheng/OmniAID/tree/main)
 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/Yunncheng/OmniAID-Demo)
+[![Hugging Face Dataset](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset-orange)](https://huggingface.co/datasets/Yunncheng/Mirage-Test)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 </div>
@@ -62,18 +63,19 @@ This demo is powered by the OmniAID checkpoint trained on Mirage-Train.
 ### 🔸 GenImage-SD v1.4 (Classified)
 A reorganized subset of GenImage-SD v1.4, classified into semantic categories (Human_Animal, Object_Scene) to train the Semantic Experts.
 
-[Download Link](https://drive.google.com/drive/folders/1Y5Fbf2Dm-trRxmmyXlcPgjYY9h_7BOUz?usp=sharing)
+[Download via Google Drive](https://drive.google.com/drive/folders/1Y5Fbf2Dm-trRxmmyXlcPgjYY9h_7BOUz?usp=sharing)
 
 ### 🔸 GenImage-SD v1.4 Reconstruction
 The real images from the GenImage-SD v1.4 subset, reconstructed using the SD1.4 VAE.
 We apply the reconstruction methodology from [AlignedForensics](https://github.com/AniSundar18/AlignedForensics/tree/master) to this specific dataset to serve as "purified" reference data for artifact learning.
 
-[Download Link](https://drive.google.com/drive/folders/1c3Ybk4NEfAXDs4VyxRoT_MjHVz3nErrF?usp=sharing)
+[Download via Google Drive](https://drive.google.com/drive/folders/1c3Ybk4NEfAXDs4VyxRoT_MjHVz3nErrF?usp=sharing)
 
 ### 🔸 Mirage-Test
 A challenging evaluation set containing images from held-out modern generators, optimized for high realism to rigorously test model generalization.
 
-[Download Link](https://drive.google.com/file/d/1-iGPbOkzGK-91LDyqeFSQefFPmZ41E2_/view)
+[Download via Hugging Face](https://huggingface.co/datasets/Yunncheng/Mirage-Test)  
+[Download via Google Drive](https://drive.google.com/file/d/1-iGPbOkzGK-91LDyqeFSQefFPmZ41E2_/view)
 
 
 ## 📦 Model Zoo
