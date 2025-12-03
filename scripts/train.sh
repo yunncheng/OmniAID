@@ -1,5 +1,9 @@
 GPU_NUM=4
-DATA_PATH="xx"  #eg: "PATH_TO_GenImage_sd14_classfied,PATH_TO_GenImage_sd14_recon"
+# Dataset paths for fine-tuning and reconstruction.
+# - Use comma to separate multiple dataset paths.
+# - The LAST path MUST be the reconstruction dataset.
+# - Single path is also allowed — subfolders will be auto-split by `list_subfolders` in main_finetune.py
+DATA_PATH="xx"  # e.g., "PATH_TO_GenImage_sd14_classfied,PATH_TO_GenImage_sd14_recon"
 OUTPUT_DIR="xx"
 LOG_DIR="xx"
 MOE_CONFIG_PATH="xx"
