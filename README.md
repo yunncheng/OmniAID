@@ -75,7 +75,7 @@ We apply the reconstruction methodology from [AlignedForensics](https://github.c
 A challenging evaluation set containing images from held-out modern generators, optimized for high realism to rigorously test model generalization.
 
 [Download via Hugging Face](https://huggingface.co/datasets/Yunncheng/Mirage-Test)  
-[Download via Google Drive](https://drive.google.com/file/d/1-iGPbOkzGK-91LDyqeFSQefFPmZ41E2_/view)
+[Download via Google Drive](https://drive.google.com/file/d/1-iGPbOkzGK-91LDyqeFSQefFPmZ41E2_/view?usp=sharing)
 
 
 ## 📦 Model Zoo
