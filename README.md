@@ -106,7 +106,7 @@ pip install -r requirements.txt
 To reproduce our results or train on your own data, please follow the steps below.
 
 ### 1. Configuration
-Modify the configuration file `config.json` to set model hyperparameters (e.g., number of experts, rank, hidden dimensions) and other global settings.
+Modify the configuration file `config.json` to set model hyperparameters (e.g., number of experts, rank, hidden dimensions) and other global settings. By default, the parameter `stage1_base_dir` should simply be set to the same path as `OUTPUT_DIR` in both the `scripts/train.sh` and `scripts/eval.sh` scripts.
 
 ```jsonc
 {
