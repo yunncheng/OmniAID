@@ -699,7 +699,7 @@ def run_eval(args):
         vals = ["Midjourney/imagenet_midjourney/val", "stable_diffusion_v_1_4/imagenet_ai_0419_sdv4/val", 
                 "stable_diffusion_v_1_5/imagenet_ai_0424_sdv5/val", "ADM/imagenet_ai_0508_adm/val", "glide/imagenet_glide/val", 
                 "wukong/imagenet_ai_0424_wukong/val", "VQDM/imagenet_ai_0419_vqdm/val", "BigGAN/imagenet_ai_0419_biggan/val"]
-    elif "Mirage-test" in args.eval_data_path and len(vals) == 5:
+    elif "Mirage-Test" in args.eval_data_path and len(vals) == 5:
         vals = ['Human', 'Animal', 'Object', 'Scene','Anime']
     else:
         vals = [args.eval_data_path]
