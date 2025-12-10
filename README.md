@@ -57,7 +57,17 @@ This demo is powered by the OmniAID checkpoint trained on Mirage-Train.
     Allows you to manually adjust expert weights to interpret how different semantic domains or the universal artifact expert contribute to the final detection score.
 
 
-## 📚 Dataset
+## 🦾 Act as a Reward Model
+
+OmniAID has been successfully integrated as a reward model to guide the image generator [RealGEN](https://github.com/yejy53/RealGen/tree/main). By providing fine-grained feedback on both semantic plausibility and low-level generative artifacts, OmniAID enables RealGEN to produce images with significantly enhanced realism and fewer detectable AI fingerprints.
+
+![RealGEN](doc/realgen.png)
+
+To facilitate its use in other generation pipelines, we provide a clean and self-contained test script for deploying OmniAID as a reward model. You can find the reference implementation in `reward/clean_test.py`. This script demonstrates how to load the pre-trained checkpoint and compute a detection score for a list of input images, which can be directly used as a reward signal for reinforcement learning-based generation.
+
+
+
+## 📚 Dataset Download
 
 
 ### 🔸 GenImage-SD v1.4 (Classified)
