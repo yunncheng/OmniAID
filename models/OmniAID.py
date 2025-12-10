@@ -1,26 +1,10 @@
-import os
-import math
-import datetime
-import logging
-import re
-import numpy as np
-from sklearn import metrics
-from typing import Union
-from collections import defaultdict
-
-from typing import Any, Optional, Tuple, Union, Dict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from torch.nn import DataParallel
-from torch.utils.tensorboard import SummaryWriter
+from typing import Optional, Tuple, Dict
 from torch.utils.checkpoint import checkpoint
-
 from transformers import CLIPModel, CLIPVisionConfig
 from transformers.models.clip.modeling_clip import CLIPVisionEmbeddings, CLIPMLP
-logger = logging.getLogger(__name__)
-
 
 class OmniAID(nn.Module):
     def __init__(self, config=None):
@@ -119,7 +103,7 @@ class OmniAID(nn.Module):
         for name, param in self.named_parameters():
             if 'experts' not in name and 'gating' not in name and 'head' not in name:
                 param.requires_grad = False
-                 
+
     def _replace_linear_with_svd_moe(self, original_module: nn.Linear, moe_module):
         original_weight = original_module.weight.data
         moe_module.weight_original_fnorm.data.copy_(torch.norm(original_weight, p='fro'))
@@ -257,7 +241,6 @@ class OmniAID(nn.Module):
         # for name, param in self.named_parameters():
         #     if param.requires_grad:
         #         print(f"- {name}")
-
 
     def forward(self, images) -> dict:
         batch_size = images.size(0)
