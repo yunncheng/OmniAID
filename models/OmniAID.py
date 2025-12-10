@@ -57,14 +57,10 @@ class OmniAID(nn.Module):
             self.artifact_expert_idx = -1  # A value that will never match an expert index
             gating_num_experts = self.num_experts
 
-
         pretrained_path = config.CLIP_path
 
         # Initialize an independent Vision Model as the feature extractor. This model will be used exclusively to generate features for the router.
         self.feature_extractor = CLIPModel.from_pretrained(pretrained_path).vision_model
-        
-        for param in self.feature_extractor.parameters():
-            param.requires_grad = False
         self.feature_extractor.eval()
 
         clip_model = CLIPModel.from_pretrained(pretrained_path)
@@ -123,8 +119,7 @@ class OmniAID(nn.Module):
         for name, param in self.named_parameters():
             if 'experts' not in name and 'gating' not in name and 'head' not in name:
                 param.requires_grad = False
-                    
-
+                 
     def _replace_linear_with_svd_moe(self, original_module: nn.Linear, moe_module):
         original_weight = original_module.weight.data
         moe_module.weight_original_fnorm.data.copy_(torch.norm(original_weight, p='fro'))
@@ -264,7 +259,6 @@ class OmniAID(nn.Module):
         #         print(f"- {name}")
 
 
-
     def forward(self, images) -> dict:
         batch_size = images.size(0)
 
@@ -277,7 +271,7 @@ class OmniAID(nn.Module):
 
         gating_outputs = {}
 
-        # Stage 1 expert training ('hard_sampling').
+        # Stage 1 expert training ('hard_sampling')
         if self.training_mode == 'hard_sampling':
             if self.active_expert_idx is None:
                 raise ValueError("In hard_sampling mode, active_expert_idx must be set.")
@@ -388,8 +382,6 @@ class OmniAID(nn.Module):
             'balance_loss': load_balancing_loss.detach(),
             'gating_cls_loss': gating_classification_loss.detach(),
         }
-
-
 
 
 class ViTMoEAttention(nn.Module):
@@ -541,7 +533,6 @@ class SVDMoeLinear(nn.Module):
         else:
             self.register_parameter('bias', None)
 
-
     def forward(self, x: torch.Tensor, gating_outputs: Dict[str, torch.Tensor]) -> torch.Tensor:
         output_main = F.linear(x, self.weight_main, None)
         
@@ -599,7 +590,6 @@ class SVDMoeLinear(nn.Module):
             final_output = final_output + self.bias        
         return final_output
 
-
     def _calculate_pairwise_loss(self, base1, base2):
         error = base1.t() @ base2
         return torch.norm(error, p='fro')
@@ -639,7 +629,6 @@ class SVDMoeLinear(nn.Module):
             
         return loss / num_pairs if num_pairs > 0 else torch.tensor(0.0, device=self.weight_main.device)
 
-
     def compute_full_orthogonal_loss(self) -> torch.Tensor:
         """
         Computes the full pairwise orthogonal loss between all components.
@@ -659,7 +648,6 @@ class SVDMoeLinear(nn.Module):
                 num_pairs += 1
                 
         return loss / num_pairs if num_pairs > 0 else torch.tensor(0.0, device=self.weight_main.device)
-
 
 
 class GatingNetwork(nn.Module):
