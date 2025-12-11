@@ -15,7 +15,7 @@
 
 **OmniAID** is a universal AI-generated image detector designed for real-world, in-the-wild scenarios. 
 
-Most existing detectors collapse under distribution shift because they entangle high-level semantic flaws (e.g., distorted humans, inconsistent object logic) and low-level generator artifacts (e.g., diffusion-specific fingerprints), learning a single fused representation that generalizes poorly.
+Most existing detectors collapse under distribution shift because they entangle high-level semantic flaws (e.g., distorted humans, inconsistent object logic) and low-level generator artifacts (e.g., diffusion-specific fingerprints), learning a single fused representation that generalizes poorly. 
 
 To address these fundamental limitations, OmniAID explicitly decouples semantic and artifact cues through a **hybrid Mixture-of-Experts (MoE)** architecture—paired with a new modern dataset, Mirage, which reflects contemporary generative models and realistic threats.
 
@@ -30,7 +30,7 @@ To address these fundamental limitations, OmniAID explicitly decouples semantic 
   Specialized experts dedicated to specific semantic domains (Human, Animal, Object, Scene, Anime).
 
 - **Fixed Universal Artifact Expert**  
-  Always active, focusing solely on **content-agnostic generative artifacts**.
+  Always active, focusing solely on content-agnostic generative artifacts.
 
 
 ### ⚙️ Two-Stage Training Strategy
@@ -40,6 +40,13 @@ To address these fundamental limitations, OmniAID explicitly decouples semantic 
 
 2. **Router Training**  
    A lightweight router learns to dispatch inputs to the most relevant semantic experts, while the artifact expert is always included.
+
+
+## 📢 News
+
+- 🗓️ **2025/12/10**: We have released a clean inference script for deploying OmniAID as a reward model.
+- 🗓️ **2025/11/30**: We have released training and testing code, along with model weights.  
+- 🗓️ **2025/11/11**: OmniAID paper is now available on [arXiv](https://arxiv.org/abs/2511.08423).
 
 
 
