@@ -33,8 +33,7 @@ class OmniAID(nn.Module):
         self.feature_extractor = CLIPModel.from_pretrained(pretrained_path).vision_model
         self.feature_extractor.eval()
 
-        clip_model = CLIPModel.from_pretrained(pretrained_path)
-        vision_config = clip_model.vision_model.config
+        vision_config = self.feature_extractor.config
         self.hidden_size = vision_config.hidden_size
         
         total_rank = vision_config.hidden_size
@@ -57,17 +56,14 @@ class OmniAID(nn.Module):
         )      
         self.head = nn.Linear(self.hidden_size, 2)
         
-        self.load_and_replace_from_pretrained(clip_model)
+        self.load_and_replace_from_pretrained(self.feature_extractor)
 
     def load_and_replace_from_pretrained(self, pretrained_model):
-        vision_model = pretrained_model.vision_model
-        
-        self.embeddings.load_state_dict(vision_model.embeddings.state_dict())
-        self.ln_pre.load_state_dict(vision_model.pre_layrnorm.state_dict())
-        self.ln_post.load_state_dict(vision_model.post_layernorm.state_dict())
+        self.embeddings.load_state_dict(pretrained_model.embeddings.state_dict())
+        self.ln_pre.load_state_dict(pretrained_model.pre_layrnorm.state_dict())
+        self.ln_post.load_state_dict(pretrained_model.post_layernorm.state_dict())
 
-        for i, pretrained_layer in enumerate(vision_model.encoder.layers):
-            moe_layer = self.encoder_layers[i]
+        for moe_layer, pretrained_layer in zip(self.encoder_layers, pretrained_model.encoder.layers):
             for proj_name in ['q_proj', 'k_proj', 'v_proj', 'out_proj']:
                 self._replace_linear_with_svd_moe(
                     getattr(pretrained_layer.self_attn, proj_name),
@@ -116,7 +112,7 @@ class OmniAID(nn.Module):
             
         pooled_output = self.ln_post(hidden_states[:, 0, :])
         pred = self.head(pooled_output)
-        prob = torch.softmax(pred, dim=1)[:, 1]
+        prob = torch.softmax(pred, dim=1)[:, 0]
 
         return prob
 
