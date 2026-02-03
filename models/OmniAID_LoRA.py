@@ -1,22 +1,24 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Tuple, Dict
+import math
+from typing import Optional, Tuple, Dict, Union, List
 from transformers import CLIPModel, CLIPVisionConfig
 from transformers.models.clip.modeling_clip import CLIPVisionEmbeddings, CLIPMLP
 from torch.utils.checkpoint import checkpoint
 
-class OmniAID(nn.Module):
+
+class OmniAID_LoRA(nn.Module):
     def __init__(self, config=None):
-        super(OmniAID, self).__init__()
+        super(OmniAID_LoRA, self).__init__()
         self.config = config
         self.num_experts = config.num_experts
-        self.rank_per_expert = config.rank_per_expert
+        self.lora_r_expert = config.rank_per_expert
 
         self.moe_lambda_orth = config.moe_lambda_orth
         self.moe_lambda_balance = config.moe_lambda_balance
         self.moe_lambda_gating_cls = config.moe_lambda_gating_cls
-        self.svd_dropout = config.dropout
+        self.lora_dropout = config.dropout
 
         self.moe_router_hidden_dim = config.moe_router_hidden_dim
         self.top_k = config.moe_top_k
@@ -33,7 +35,7 @@ class OmniAID(nn.Module):
 
         if self.is_hybrid:
             print("Initializing in HYBRID MoE architectural mode.")
-            # Use the last expert as the artifact expert
+            # Use the last expert as the artifact expert.
             self.artifact_expert_idx = config.num_experts - 1
             self.num_semantic_experts = config.num_experts - 1
             if self.num_semantic_experts <= 0:
@@ -44,6 +46,7 @@ class OmniAID(nn.Module):
             self.artifact_expert_idx = -1  # A value that will never match an expert index
             gating_num_experts = self.num_experts
 
+
         pretrained_path = config.CLIP_path
 
         # Initialize an independent Vision Model as the feature extractor. This model will be used exclusively to generate features for the router.
@@ -53,26 +56,15 @@ class OmniAID(nn.Module):
         vision_config = self.feature_extractor.config
         self.hidden_size = vision_config.hidden_size
         
-        # Calculate rank allocation
-        total_rank = vision_config.hidden_size
-        residual_rank = self.rank_per_expert
-
-        if residual_rank >= total_rank:
-            raise ValueError(
-                f"The total rank for experts ({residual_rank}) must be less than the total rank ({total_rank}). "
-                f"Please reduce num_experts ({self.num_experts}) or rank_per_expert ({self.rank_per_expert})."
-            )
-        
-        r_main = total_rank - residual_rank
-        print(f"Rank allocation: total_rank={total_rank}, r_main={r_main}, num_experts={self.num_experts}, rank_per_expert={self.rank_per_expert}")
+        print(f"LoRA MoE Configuration: Expert Rank={self.lora_r_expert}, Num Experts={self.num_experts}")
         
         # Build the MoE backbone network
         self.embeddings = CLIPVisionEmbeddings(vision_config)
         self.ln_pre = nn.LayerNorm(vision_config.hidden_size)
         self.encoder_layers = nn.ModuleList([
-            ViTMoELayer(vision_config, self.num_experts, r_main, self.rank_per_expert, self.artifact_expert_idx, self.svd_dropout) 
-            for _ in range(vision_config.num_hidden_layers)
-        ])
+                    ViTMoELayer(vision_config, self.num_experts, self.lora_r_expert, self.artifact_expert_idx, self.lora_dropout) 
+                    for _ in range(vision_config.num_hidden_layers)
+                ])
         self.ln_post = nn.LayerNorm(self.hidden_size, eps=vision_config.layer_norm_eps)
         self.gating_network = GatingNetwork(
             input_dim=self.hidden_size, 
@@ -91,7 +83,7 @@ class OmniAID(nn.Module):
 
         for moe_layer, pretrained_layer in zip(self.encoder_layers, pretrained_model.encoder.layers):
             for proj_name in ['q_proj', 'k_proj', 'v_proj', 'out_proj']:
-                self._replace_linear_with_svd_moe(
+                self._init_lora_moe_weights(
                     getattr(pretrained_layer.self_attn, proj_name),
                     getattr(moe_layer.self_attn, proj_name)
                 )
@@ -101,53 +93,21 @@ class OmniAID(nn.Module):
 
         # Freeze non-MoE parameters
         for name, param in self.named_parameters():
-            if 'experts' not in name and 'gating' not in name and 'head' not in name:
+            if 'lora_' not in name and 'gating' not in name and 'head' not in name:
                 param.requires_grad = False
                     
-    def _replace_linear_with_svd_moe(self, original_module: nn.Linear, moe_module):
-        original_weight = original_module.weight.data
-        moe_module.weight_original_fnorm.data.copy_(torch.norm(original_weight, p='fro'))
+
+    def _init_lora_moe_weights(self, original_module: nn.Linear, moe_module):
+        # Copy full original weights to the frozen buffer
+        moe_module.weight_fixed.data.copy_(original_module.weight.data)
         if original_module.bias is not None:
             moe_module.bias.data.copy_(original_module.bias.data)
 
-        U, S, Vh = torch.linalg.svd(original_weight, full_matrices=False)
-
-        # Initialize the main (shared) weight matrix
-        r = moe_module.r_main
-        U_r, S_r, Vh_r = U[:, :r], S[:r], Vh[:r, :]
-        moe_module.weight_main.data.copy_(U_r @ torch.diag(S_r) @ Vh_r)
-
-        moe_module.U_r.data.copy_(U_r)
-        moe_module.V_r.data.copy_(Vh_r)
-
-        # Define the SINGLE, SHARED chunk from ALL remaining singular values
-        chunk_start_rank = r
-
-        # Check if there are any singular values left
-        if chunk_start_rank >= len(S):
-            # If not, initialize all experts to zero
-            for i in range(moe_module.num_experts):
-                moe_module.U_experts[i].data.zero_()
-                moe_module.S_experts[i].data.zero_()
-                moe_module.V_experts[i].data.zero_()
-            return
-
-        U_chunk, S_chunk, Vh_chunk = U[:, chunk_start_rank:], S[chunk_start_rank:], Vh[chunk_start_rank:, :]
-
-        # The expert's parameter dimension is fixed at rank_per_expert. We must pad the chunk if its actual rank is smaller
-        actual_chunk_rank = U_chunk.shape[1]
-
-        if actual_chunk_rank < moe_module.rank_per_expert:
-            pad_rank = moe_module.rank_per_expert - actual_chunk_rank
-            U_chunk = F.pad(U_chunk, (0, pad_rank))
-            S_chunk = F.pad(S_chunk, (0, pad_rank))
-            Vh_chunk = F.pad(Vh_chunk, (0, 0, 0, pad_rank))
-
-        # Assign the SAME shared chunk to all experts
+        # Init Expert LoRAs
         for i in range(moe_module.num_experts):
-            moe_module.U_experts[i].data.copy_(U_chunk)
-            moe_module.S_experts[i].data.copy_(S_chunk)
-            moe_module.V_experts[i].data.copy_(Vh_chunk)
+            nn.init.kaiming_uniform_(moe_module.lora_A_experts[i], a=math.sqrt(5))
+            nn.init.zeros_(moe_module.lora_B_experts[i])
+
 
     def set_training_mode(self, mode: str, active_expert_idx: int = None, trainable_expert_indices: list = None):
         """
@@ -190,12 +150,10 @@ class OmniAID(nn.Module):
             for layer in self.encoder_layers:
                 for proj_name in ['q_proj', 'k_proj', 'v_proj', 'out_proj']:
                     moe_linear_layer = getattr(layer.self_attn, proj_name)
-                    for param in moe_linear_layer.U_experts:
-                        param.requires_grad = True
-                    for param in moe_linear_layer.S_experts:
-                        param.requires_grad = True
-                    for param in moe_linear_layer.V_experts:
-                        param.requires_grad = True
+                    for p in moe_linear_layer.lora_A_experts:
+                        p.requires_grad = True
+                    for p in moe_linear_layer.lora_B_experts:
+                        p.requires_grad = True
         
         elif mode == 'router_training':
             print("Unfreezing: Gating Network and Head.")
@@ -206,7 +164,7 @@ class OmniAID(nn.Module):
             
             # Optionally unfreeze specific experts during router training
             if trainable_expert_indices:
-                print(f"Additionally unfreezing experts with indices: {trainable_expert_indices}")
+                print(f"Additionally unfreezing experts: {trainable_expert_indices}")
                 for expert_idx in trainable_expert_indices:
                     if not 0 <= expert_idx < self.num_experts:
                         raise ValueError(f"trainable_expert_index ({expert_idx}) is out of bounds for num_experts ({self.num_experts}).")
@@ -214,9 +172,8 @@ class OmniAID(nn.Module):
                     for layer in self.encoder_layers:
                         for proj_name in ['q_proj', 'k_proj', 'v_proj', 'out_proj']:
                             moe_linear_layer = getattr(layer.self_attn, proj_name)
-                            moe_linear_layer.U_experts[expert_idx].requires_grad = True
-                            moe_linear_layer.S_experts[expert_idx].requires_grad = True
-                            moe_linear_layer.V_experts[expert_idx].requires_grad = True
+                            moe_linear_layer.lora_A_experts[expert_idx].requires_grad = True
+                            moe_linear_layer.lora_B_experts[expert_idx].requires_grad = True
         
         elif mode == 'hard_sampling':
             # In hard_sampling stage, unfreeze only the parameters of the single active expert
@@ -227,10 +184,9 @@ class OmniAID(nn.Module):
                 for proj_name in ['q_proj', 'k_proj', 'v_proj', 'out_proj']:
                     moe_linear_layer = getattr(layer.self_attn, proj_name)
                     
-                    # Unfreeze the parameters (U, S, V) for the specified active expert by direct indexing
-                    moe_linear_layer.U_experts[self.active_expert_idx].requires_grad = True
-                    moe_linear_layer.S_experts[self.active_expert_idx].requires_grad = True
-                    moe_linear_layer.V_experts[self.active_expert_idx].requires_grad = True
+                    # Unfreeze the parameters (A, B) for the specified active expert by direct indexing
+                    moe_linear_layer.lora_A_experts[self.active_expert_idx].requires_grad = True
+                    moe_linear_layer.lora_B_experts[self.active_expert_idx].requires_grad = True
 
             for param in self.head.parameters():
                 param.requires_grad = True
@@ -259,7 +215,7 @@ class OmniAID(nn.Module):
 
         gating_outputs = {}
 
-        # Stage 1 expert training ('hard_sampling')
+        # Stage 1 expert training ('hard_sampling'). Determine how gate_weights are generated based on active_expert_idx
         if self.training_mode == 'hard_sampling':
             if self.active_expert_idx is None:
                 raise ValueError("In hard_sampling mode, active_expert_idx must be set.")
@@ -325,8 +281,8 @@ class OmniAID(nn.Module):
         prob = torch.softmax(pred, dim=1)[:, 1]
 
         return {
-            'cls': pred, 
-            'prob': prob, 
+            'cls': pred,
+            'prob': prob,
             'balance_loss': gating_outputs['balance_loss'],
             'gating_logits': gating_outputs['gating_logits'],
             'final_gates': final_gates
@@ -339,19 +295,19 @@ class OmniAID(nn.Module):
         orth_loss, load_balancing_loss = torch.tensor(0.0, device=pred.device), torch.tensor(0.0, device=pred.device)
         gating_classification_loss = torch.tensor(0.0, device=pred.device)
 
-        num_moe_layers = sum(1 for module in self.modules() if isinstance(module, SVDMoeLinear))
+        num_moe_layers = sum(1 for module in self.modules() if isinstance(module, LoRAMoeLinear))
 
         # Orthogonal loss is not calculated during router_training
         if self.training_mode != 'router_training' and num_moe_layers > 0:
             current_orth_loss = 0.0
             for module in self.modules():
-                if isinstance(module, SVDMoeLinear):
+                if isinstance(module, LoRAMoeLinear):
                     if self.training_mode == 'hard_sampling':
                         current_orth_loss += module.compute_targeted_orthogonal_loss(self.active_expert_idx)
                     elif self.training_mode == 'standard':
                         current_orth_loss += module.compute_full_orthogonal_loss()
             orth_loss = current_orth_loss / num_moe_layers
-
+        
         # Balance loss is only relevant when the router is active
         if self.training_mode == 'router_training' or self.training_mode == 'standard':
             load_balancing_loss = pred_dict['balance_loss']
@@ -385,7 +341,7 @@ class OmniAID(nn.Module):
 
 
 class ViTMoEAttention(nn.Module):
-    def __init__(self, config: CLIPVisionConfig, num_experts: int, r_main: int, rank_per_expert: int, artifact_expert_idx: int, svd_dropout: float):
+    def __init__(self, config: CLIPVisionConfig, num_experts: int, lora_r_expert: int, artifact_expert_idx: int, lora_dropout: float):
         super().__init__()
         self.embed_dim = config.hidden_size
         self.num_heads = config.num_attention_heads
@@ -399,10 +355,10 @@ class ViTMoEAttention(nn.Module):
         self.scale = self.head_dim**-0.5
         self.dropout = config.attention_dropout
 
-        self.q_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout)
-        self.k_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout)
-        self.v_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout)
-        self.out_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout)
+        self.q_proj = LoRAMoeLinear(self.embed_dim, self.embed_dim, num_experts, lora_r_expert, artifact_expert_idx, lora_dropout)
+        self.k_proj = LoRAMoeLinear(self.embed_dim, self.embed_dim, num_experts, lora_r_expert, artifact_expert_idx, lora_dropout)
+        self.v_proj = LoRAMoeLinear(self.embed_dim, self.embed_dim, num_experts, lora_r_expert, artifact_expert_idx, lora_dropout)
+        self.out_proj = LoRAMoeLinear(self.embed_dim, self.embed_dim, num_experts, lora_r_expert, artifact_expert_idx, lora_dropout)
 
     def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
         return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
@@ -466,9 +422,9 @@ class ViTMoEAttention(nn.Module):
     
 
 class ViTMoELayer(nn.Module):
-    def __init__(self, config: CLIPVisionConfig, num_experts: int, r_main: int, rank_per_expert: int, artifact_expert_idx: int, svd_dropout: float):
+    def __init__(self, config, num_experts, lora_r_expert, artifact_expert_idx, lora_dropout):
         super().__init__()
-        self.self_attn = ViTMoEAttention(config, num_experts, r_main, rank_per_expert, artifact_expert_idx, svd_dropout)
+        self.self_attn = ViTMoEAttention(config, num_experts, lora_r_expert, artifact_expert_idx, lora_dropout)
         self.layer_norm1 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.mlp = CLIPMLP(config)
         self.layer_norm2 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
@@ -495,28 +451,21 @@ class ViTMoELayer(nn.Module):
         return (hidden_states, ) 
 
 
-class SVDMoeLinear(nn.Module):
-    """
-    SVD orthogonal subspace linear layer supporting multiple experts and dynamic gating.
-    """
-    def __init__(self, in_features, out_features, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout=0.0, bias=True):
-        super(SVDMoeLinear, self).__init__()
+class LoRAMoeLinear(nn.Module):
+    def __init__(self, in_features, out_features, num_experts, lora_r_expert, artifact_expert_idx, lora_dropout=0.0, bias=True):
+        super(LoRAMoeLinear, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.r_main = r_main
         self.num_experts = num_experts
-        self.rank_per_expert = rank_per_expert
+        self.lora_r_expert = lora_r_expert
         self.artifact_expert_idx = artifact_expert_idx
 
-        self.register_buffer('weight_main', torch.zeros(out_features, in_features))
-        self.register_buffer('U_r', torch.zeros(out_features, r_main))
-        self.register_buffer('V_r', torch.zeros(r_main, in_features))
+        # Frozen pretrained weights
+        self.register_buffer('weight_fixed', torch.zeros(out_features, in_features))
         
-        self.U_experts = nn.ParameterList([nn.Parameter(torch.zeros(out_features, rank_per_expert)) for _ in range(num_experts)])
-        self.S_experts = nn.ParameterList([nn.Parameter(torch.zeros(rank_per_expert)) for _ in range(num_experts)])
-        self.V_experts = nn.ParameterList([nn.Parameter(torch.zeros(rank_per_expert, in_features)) for _ in range(num_experts)])
-
-        self.register_buffer('weight_original_fnorm', torch.tensor(0.0))
+        # Expert LoRA Paths
+        self.lora_A_experts = nn.ParameterList([nn.Parameter(torch.zeros(lora_r_expert, in_features)) for _ in range(num_experts)])
+        self.lora_B_experts = nn.ParameterList([nn.Parameter(torch.zeros(out_features, lora_r_expert)) for _ in range(num_experts)])
 
         if bias:
             self.bias = nn.Parameter(torch.Tensor(out_features))
@@ -524,128 +473,98 @@ class SVDMoeLinear(nn.Module):
         else:
             self.register_parameter('bias', None)
 
-        if svd_dropout > 0.0:
-            self.dropout = nn.Dropout(p=svd_dropout)
+        if lora_dropout > 0.0:
+            self.dropout = nn.Dropout(p=lora_dropout)
         else:
             self.dropout = nn.Identity()
 
     def forward(self, x: torch.Tensor, gating_outputs: Dict[str, torch.Tensor]) -> torch.Tensor:
-        output_main = F.linear(x, self.weight_main, None)
-
-        x = self.dropout(x)
+        # Base fixed forward
+        output_fixed = F.linear(x, self.weight_fixed, None)
         
-        top_k_indices = gating_outputs['top_k_indices'] # Shape: [B, k]
-        top_k_gates = gating_outputs['top_k_gates']     # Shape: [B, k]
+        x = self.dropout(x)
+
+        # Expert MoE LoRA path
+        top_k_indices = gating_outputs['top_k_indices'] 
+        top_k_gates = gating_outputs['top_k_gates']     
         k = top_k_indices.size(1)
 
-        expert_output = torch.zeros_like(output_main)
-        U_all = torch.stack([p for p in self.U_experts])
-        S_all = torch.stack([p for p in self.S_experts])
-        V_all = torch.stack([p for p in self.V_experts])
-
-        # Record the original input dimension (2 or 3)
-        original_dim = x.dim()
+        expert_output = torch.zeros_like(output_fixed)
         
-        # We use torch.bmm which requires 3D inputs
-        # If x is 2D (Batch, In_features), we unsqueeze it to 3D (Batch, 1, In_features)
-        if original_dim == 2:
-            x = x.unsqueeze(1)  # Shape: [B, I] -> [B, 1, I]
-            # We do the same for expert_output to match dimensions for accumulation
-            expert_output = expert_output.unsqueeze(1) # Shape: [B, O] -> [B, 1, O]
+        A_all = torch.stack([p for p in self.lora_A_experts]) 
+        B_all = torch.stack([p for p in self.lora_B_experts]) 
 
-        # Loop over the k choices
+        original_dim = x.dim()
+        if original_dim == 2:
+            x = x.unsqueeze(1)
+            expert_output = expert_output.unsqueeze(1)
+
         for i in range(k):
-            chosen_expert_indices = top_k_indices[:, i]  # Shape: [B]
-            gate_values = top_k_gates[:, i].unsqueeze(-1) # Shape: [B, 1]
+            chosen_expert_indices = top_k_indices[:, i]  
+            gate_values = top_k_gates[:, i].unsqueeze(-1).unsqueeze(-1) 
 
-            U_batch = U_all[chosen_expert_indices] # Shape: [B, O, r]
-            S_batch = S_all[chosen_expert_indices] # Shape: [B, r]
-            V_batch = V_all[chosen_expert_indices] # Shape: [B, r, I]
+            A_batch = A_all[chosen_expert_indices] 
+            B_batch = B_all[chosen_expert_indices] 
 
-            # 1. (x @ V.T)
-            #    Shape: [B, S, I] @ [B, I, r] -> [B, S, r]
-            x_v = torch.bmm(x, V_batch.transpose(1, 2))
+            # (x @ A.T) @ B.T
+            x_a = torch.bmm(x, A_batch.transpose(1, 2))
+            current_expert_out = torch.bmm(x_a, B_batch.transpose(1, 2))
             
-            # 2. (x @ V.T) * S
-            #    This is equivalent to (x @ V.T) @ diag(S)
-            #    Shape: [B, S, r] * [B, 1, r] (broadcast) -> [B, S, r]
-            x_v_s = x_v * S_batch.unsqueeze(1)
-            
-            # 3. ((x @ V.T) * S) @ U.T is equivalent to `output = x @ (U @ diag(S) @ V).T`
-            #    Shape: [B, S, r] @ [B, r, O] -> [B, S, O]
-            current_expert_output = torch.bmm(x_v_s, U_batch.transpose(1, 2))
-            
-            # 4. Apply gate weights
-            #    Shape: [B, S, O] * [B, 1, 1] (broadcast) -> [B, S, O]
-            expert_output += current_expert_output * gate_values.unsqueeze(-1)
+            expert_output += current_expert_out * gate_values
 
-        # If the input was 2D, squeeze the sequence dimension (S=1) back out
         if original_dim == 2:
-            expert_output = expert_output.squeeze(1) # Shape: [B, 1, O] -> [B, O]
+            expert_output = expert_output.squeeze(1)
 
-        final_output = output_main + expert_output
+        final_output = output_fixed + expert_output
+        
         if self.bias is not None:
-            final_output = final_output + self.bias        
+            final_output = final_output + self.bias
+            
         return final_output
 
-    def _calculate_pairwise_loss(self, base1, base2):
-        error = base1.t() @ base2
-        return torch.norm(error, p='fro')
+    def _calculate_pairwise_orthogonality(self, mat1, mat2, dim_to_normalize):
+        v1 = F.normalize(mat1, dim=dim_to_normalize)
+        v2 = F.normalize(mat2, dim=dim_to_normalize)
+        if dim_to_normalize == 0:
+            similarity = v1.t() @ v2
+        else:
+            similarity = v1 @ v2.t()
+        return torch.norm(similarity, p='fro')
 
     def compute_targeted_orthogonal_loss(self, active_expert_idx: int) -> torch.Tensor:
-        """
-        Efficient orthogonal loss for the hard sampling stage.
-        - If the active expert is the artifact expert, computes loss only against the main space.
-        - If the active expert is a semantic expert, computes loss against the main space
-          and previously trained *semantic* experts, skipping the artifact expert.
-        """
-        loss = torch.tensor(0.0, device=self.weight_main.device)
+        loss = torch.tensor(0.0, device=self.weight_fixed.device)
         num_pairs = 0
         
-        active_U = F.normalize(self.U_experts[active_expert_idx], dim=0)
-        active_V_t = F.normalize(self.V_experts[active_expert_idx], dim=1).t()
+        active_A = self.lora_A_experts[active_expert_idx]
+        active_B = self.lora_B_experts[active_expert_idx]
         
-        # Loss vs. Main space
-        loss += self._calculate_pairwise_loss(self.U_r, active_U)
-        loss += self._calculate_pairwise_loss(self.V_r.t(), active_V_t)
-        num_pairs += 1
-
-        if active_expert_idx == self.artifact_expert_idx:
-            return loss / num_pairs
-
-        # Loss vs. previously trained semantic experts
+        # pre experts
         for i in range(active_expert_idx):
-            # Skip comparison with the artifact expert
-            if i == self.artifact_expert_idx:
-                continue
+            if i == self.artifact_expert_idx: continue
             
-            prev_U = F.normalize(self.U_experts[i].detach(), dim=0)
-            prev_V_t = F.normalize(self.V_experts[i].detach(), dim=1).t()
-            loss += self._calculate_pairwise_loss(prev_U, active_U)
-            loss += self._calculate_pairwise_loss(prev_V_t, active_V_t)
+            prev_A = self.lora_A_experts[i].detach()
+            prev_B = self.lora_B_experts[i].detach()
+            
+            loss += self._calculate_pairwise_orthogonality(prev_B, active_B, dim_to_normalize=0)
+            loss += self._calculate_pairwise_orthogonality(prev_A, active_A, dim_to_normalize=1)
             num_pairs += 1
             
-        return loss / num_pairs if num_pairs > 0 else torch.tensor(0.0, device=self.weight_main.device)
+        return loss / num_pairs if num_pairs > 0 else torch.tensor(0.0, device=self.weight_fixed.device)
 
     def compute_full_orthogonal_loss(self) -> torch.Tensor:
-        """
-        Computes the full pairwise orthogonal loss between all components.
-        Used for end-to-end finetuning stages.
-        """
-        all_U_bases = [self.U_r] + [F.normalize(u, dim=0) for u in self.U_experts]
-        all_V_bases_t = [self.V_r.t()] + [F.normalize(v, dim=1).t() for v in self.V_experts]
+        all_As = [a for a in self.lora_A_experts]
+        all_Bs = [b for b in self.lora_B_experts]
 
-        loss = torch.tensor(0.0, device=self.weight_main.device)
+        loss = torch.tensor(0.0, device=self.weight_fixed.device)
         num_pairs = 0
         
-        # Iterate over all unique pairs of basis matrices
-        for i in range(len(all_U_bases)):
-            for j in range(i + 1, len(all_U_bases)):
-                loss += self._calculate_pairwise_loss(all_U_bases[i], all_U_bases[j])
-                loss += self._calculate_pairwise_loss(all_V_bases_t[i], all_V_bases_t[j])
+        for i in range(len(all_As)):
+            for j in range(i + 1, len(all_As)):
+                loss += self._calculate_pairwise_orthogonality(all_As[i], all_As[j], dim_to_normalize=1)
+                loss += self._calculate_pairwise_orthogonality(all_Bs[i], all_Bs[j], dim_to_normalize=0)
                 num_pairs += 1
                 
-        return loss / num_pairs if num_pairs > 0 else torch.tensor(0.0, device=self.weight_main.device)
+        return loss / num_pairs if num_pairs > 0 else torch.tensor(0.0, device=self.weight_fixed.device)
 
 
 class GatingNetwork(nn.Module):

@@ -1,5 +1,6 @@
 {
   "CLIP_path": "openai/clip-vit-large-patch14-336",
+  "DINOV3_path": "",
   "num_experts": 3,
   "rank_per_expert": 4,
   "moe_lambda_orth": 0.01,
@@ -7,6 +8,8 @@
   "moe_lambda_gating_cls": 0.1,
   "moe_router_hidden_dim": 64,
   "moe_top_k": 1,
+  "dropout": 0.0,
+  "gradient_checkpointing_enable": false,
   "stage1_base_dir": "xx",
   "experts_map": {
     "0": "checkpoint-0.pth",

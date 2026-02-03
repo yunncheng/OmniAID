@@ -1,14 +1,23 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Tuple, Dict
-from transformers import CLIPModel, CLIPVisionConfig
-from transformers.models.clip.modeling_clip import CLIPVisionEmbeddings, CLIPMLP
+from typing import Optional, Tuple, Dict, Union, List
+from transformers import DINOv3ViTModel, DINOv3ViTConfig
+from transformers.models.dinov3_vit.modular_dinov3_vit import (
+    DINOv3ViTEmbeddings, 
+    DINOv3ViTRopePositionEmbedding, 
+    DINOv3ViTMLP, 
+    DINOv3ViTGatedMLP, 
+    DINOv3ViTLayerScale, 
+    DINOv3ViTDropPath,
+    apply_rotary_pos_emb
+)
 from torch.utils.checkpoint import checkpoint
 
-class OmniAID(nn.Module):
+
+class OmniAID_DINO(nn.Module):
     def __init__(self, config=None):
-        super(OmniAID, self).__init__()
+        super(OmniAID_DINO, self).__init__()
         self.config = config
         self.num_experts = config.num_experts
         self.rank_per_expert = config.rank_per_expert
@@ -44,10 +53,9 @@ class OmniAID(nn.Module):
             self.artifact_expert_idx = -1  # A value that will never match an expert index
             gating_num_experts = self.num_experts
 
-        pretrained_path = config.CLIP_path
+        pretrained_path = config.DINOV3_path
 
-        # Initialize an independent Vision Model as the feature extractor. This model will be used exclusively to generate features for the router.
-        self.feature_extractor = CLIPModel.from_pretrained(pretrained_path).vision_model
+        self.feature_extractor = DINOv3ViTModel.from_pretrained(pretrained_path)
         self.feature_extractor.eval()
 
         vision_config = self.feature_extractor.config
@@ -67,13 +75,13 @@ class OmniAID(nn.Module):
         print(f"Rank allocation: total_rank={total_rank}, r_main={r_main}, num_experts={self.num_experts}, rank_per_expert={self.rank_per_expert}")
         
         # Build the MoE backbone network
-        self.embeddings = CLIPVisionEmbeddings(vision_config)
-        self.ln_pre = nn.LayerNorm(vision_config.hidden_size)
-        self.encoder_layers = nn.ModuleList([
-            ViTMoELayer(vision_config, self.num_experts, r_main, self.rank_per_expert, self.artifact_expert_idx, self.svd_dropout) 
+        self.embeddings = DINOv3ViTEmbeddings(vision_config)
+        self.rope_embeddings = DINOv3ViTRopePositionEmbedding(vision_config)
+        self.layer = nn.ModuleList([
+            DINOv3ViTMoELayer(vision_config, self.num_experts, r_main, self.rank_per_expert, self.artifact_expert_idx, self.svd_dropout) 
             for _ in range(vision_config.num_hidden_layers)
         ])
-        self.ln_post = nn.LayerNorm(self.hidden_size, eps=vision_config.layer_norm_eps)
+        self.norm = nn.LayerNorm(vision_config.hidden_size, eps=vision_config.layer_norm_eps)
         self.gating_network = GatingNetwork(
             input_dim=self.hidden_size, 
             num_experts=gating_num_experts,
@@ -86,19 +94,24 @@ class OmniAID(nn.Module):
 
     def load_and_replace_from_pretrained(self, pretrained_model):
         self.embeddings.load_state_dict(pretrained_model.embeddings.state_dict())
-        self.ln_pre.load_state_dict(pretrained_model.pre_layrnorm.state_dict())
-        self.ln_post.load_state_dict(pretrained_model.post_layernorm.state_dict())
+        self.rope_embeddings.load_state_dict(pretrained_model.rope_embeddings.state_dict())
+        self.norm.load_state_dict(pretrained_model.norm.state_dict())
 
-        for moe_layer, pretrained_layer in zip(self.encoder_layers, pretrained_model.encoder.layers):
-            for proj_name in ['q_proj', 'k_proj', 'v_proj', 'out_proj']:
+        for moe_layer, pretrained_layer in zip(self.layer, pretrained_model.layer):
+
+            for proj_name in ['q_proj', 'k_proj', 'v_proj', 'o_proj']:
                 self._replace_linear_with_svd_moe(
-                    getattr(pretrained_layer.self_attn, proj_name),
-                    getattr(moe_layer.self_attn, proj_name)
-                )
-            moe_layer.layer_norm1.load_state_dict(pretrained_layer.layer_norm1.state_dict())
-            moe_layer.mlp.load_state_dict(pretrained_layer.mlp.state_dict())
-            moe_layer.layer_norm2.load_state_dict(pretrained_layer.layer_norm2.state_dict())
+                    getattr(pretrained_layer.attention, proj_name),
+                    getattr(moe_layer.attention, proj_name)
+                )            
 
+            moe_layer.mlp.load_state_dict(pretrained_layer.mlp.state_dict())
+
+            moe_layer.norm1.load_state_dict(pretrained_layer.norm1.state_dict())
+            moe_layer.norm2.load_state_dict(pretrained_layer.norm2.state_dict())
+            moe_layer.layer_scale1.load_state_dict(pretrained_layer.layer_scale1.state_dict())
+            moe_layer.layer_scale2.load_state_dict(pretrained_layer.layer_scale2.state_dict())
+        
         # Freeze non-MoE parameters
         for name, param in self.named_parameters():
             if 'experts' not in name and 'gating' not in name and 'head' not in name:
@@ -187,9 +200,9 @@ class OmniAID(nn.Module):
             for param in self.head.parameters():
                 param.requires_grad = True
 
-            for layer in self.encoder_layers:
-                for proj_name in ['q_proj', 'k_proj', 'v_proj', 'out_proj']:
-                    moe_linear_layer = getattr(layer.self_attn, proj_name)
+            for layer in self.layer:
+                for proj_name in ['q_proj', 'k_proj', 'v_proj', 'o_proj']:
+                    moe_linear_layer = getattr(layer.attention, proj_name)
                     for param in moe_linear_layer.U_experts:
                         param.requires_grad = True
                     for param in moe_linear_layer.S_experts:
@@ -211,9 +224,9 @@ class OmniAID(nn.Module):
                     if not 0 <= expert_idx < self.num_experts:
                         raise ValueError(f"trainable_expert_index ({expert_idx}) is out of bounds for num_experts ({self.num_experts}).")
                     
-                    for layer in self.encoder_layers:
-                        for proj_name in ['q_proj', 'k_proj', 'v_proj', 'out_proj']:
-                            moe_linear_layer = getattr(layer.self_attn, proj_name)
+                    for layer in self.layer:
+                        for proj_name in ['q_proj', 'k_proj', 'v_proj', 'o_proj']:
+                            moe_linear_layer = getattr(layer.attention, proj_name)
                             moe_linear_layer.U_experts[expert_idx].requires_grad = True
                             moe_linear_layer.S_experts[expert_idx].requires_grad = True
                             moe_linear_layer.V_experts[expert_idx].requires_grad = True
@@ -223,9 +236,9 @@ class OmniAID(nn.Module):
             if self.active_expert_idx >= self.num_experts:
                  raise ValueError(f"active_expert_idx ({self.active_expert_idx}) is out of bounds for num_experts ({self.num_experts}).")
 
-            for layer in self.encoder_layers:
-                for proj_name in ['q_proj', 'k_proj', 'v_proj', 'out_proj']:
-                    moe_linear_layer = getattr(layer.self_attn, proj_name)
+            for layer in self.layer:
+                for proj_name in ['q_proj', 'k_proj', 'v_proj', 'o_proj']:
+                    moe_linear_layer = getattr(layer.attention, proj_name)
                     
                     # Unfreeze the parameters (U, S, V) for the specified active expert by direct indexing
                     moe_linear_layer.U_experts[self.active_expert_idx].requires_grad = True
@@ -244,18 +257,19 @@ class OmniAID(nn.Module):
 
     # For checkpoint
     @staticmethod
-    def run_moe_layer(module, hidden_states, gating_outputs):
-        return module(hidden_states, gating_outputs=gating_outputs)[0]
+    def run_moe_layer(module, hidden_states, gating_outputs, position_embeddings):
+        return module(hidden_states, gating_outputs=gating_outputs, position_embeddings=position_embeddings)
 
     def forward(self, images) -> dict:
+        images = images.to(self.embeddings.patch_embeddings.weight.dtype)
         batch_size = images.size(0)
 
         with torch.no_grad():
             # Use the pooler_output as the routing feature
-            routing_features = self.feature_extractor(images, output_hidden_states=False).pooler_output
+            routing_features = self.feature_extractor(images).pooler_output
 
         hidden_states = self.embeddings(images)
-        hidden_states = self.ln_pre(hidden_states)
+        position_embeddings = self.rope_embeddings(images)
 
         gating_outputs = {}
 
@@ -305,28 +319,32 @@ class OmniAID(nn.Module):
         
         final_gates.scatter_(-1, gating_outputs['top_k_indices'], gating_outputs['top_k_gates'])
 
-        for layer_module in self.encoder_layers:
+        for layer_module in self.layer:
             if self.gradient_checkpointing and self.training:
                 hidden_states = checkpoint(
                     self.run_moe_layer,
                     layer_module,
                     hidden_states,
                     gating_outputs,
+                    position_embeddings,
                     use_reentrant=False
                 )
             else:
                 hidden_states = layer_module(
                     hidden_states, 
                     gating_outputs=gating_outputs, 
-                )[0]
-            
-        pooled_output = self.ln_post(hidden_states[:, 0, :])
+                    position_embeddings=position_embeddings
+                )
+        
+        sequence_output = self.norm(hidden_states)    
+        pooled_output = sequence_output[:, 0, :]
+
         pred = self.head(pooled_output)
         prob = torch.softmax(pred, dim=1)[:, 1]
 
         return {
-            'cls': pred, 
-            'prob': prob, 
+            'cls': pred,
+            'prob': prob,
             'balance_loss': gating_outputs['balance_loss'],
             'gating_logits': gating_outputs['gating_logits'],
             'final_gates': final_gates
@@ -384,115 +402,98 @@ class OmniAID(nn.Module):
         }
 
 
-class ViTMoEAttention(nn.Module):
-    def __init__(self, config: CLIPVisionConfig, num_experts: int, r_main: int, rank_per_expert: int, artifact_expert_idx: int, svd_dropout: float):
+class DINOv3ViTMoEAttention(nn.Module):
+    def __init__(self, config, num_experts, r_main, rank_per_expert, artifact_expert_idx, svd_dropout):
         super().__init__()
+        self.config = config
         self.embed_dim = config.hidden_size
         self.num_heads = config.num_attention_heads
         self.head_dim = self.embed_dim // self.num_heads
-        if self.head_dim * self.num_heads != self.embed_dim:
-            raise ValueError(
-                f"embed_dim must be divisible by num_heads (got `embed_dim`: {self.embed_dim} and `num_heads`:"
-                f" {self.num_heads})."
-            )
-        
-        self.scale = self.head_dim**-0.5
+        self.scaling = self.head_dim**-0.5
         self.dropout = config.attention_dropout
+        
+        self.q_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout, config.query_bias)
+        self.k_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout, config.key_bias)
+        self.v_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout, config.value_bias)
+        self.o_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout, config.proj_bias)
 
-        self.q_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout)
-        self.k_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout)
-        self.v_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout)
-        self.out_proj = SVDMoeLinear(self.embed_dim, self.embed_dim, r_main, num_experts, rank_per_expert, artifact_expert_idx, svd_dropout)
+    def forward(self, hidden_states, gating_outputs, attention_mask=None, position_embeddings=None):
+        batch_size, patches, _ = hidden_states.size()
 
-    def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
-        return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
-
-    def forward(
-        self, 
-        hidden_states: torch.Tensor, 
-        gating_outputs: Dict[str, torch.Tensor],
-        attention_mask: Optional[torch.Tensor] = None,
-        output_attentions: Optional[bool] = False,
-    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        """
-        Input shape: Batch x Time x Channel
-        attention_mask: (batch, 1, a_seq_len, b_seq_len)
-        """
-        bsz, tgt_len, embed_dim = hidden_states.size()
-
-        query_states = self.q_proj(hidden_states, gating_outputs) * self.scale
+        query_states = self.q_proj(hidden_states, gating_outputs)
         key_states = self.k_proj(hidden_states, gating_outputs)
         value_states = self.v_proj(hidden_states, gating_outputs)
-        
-        query_states = self._shape(query_states, tgt_len, bsz)
-        key_states = self._shape(key_states, -1, bsz)
-        value_states = self._shape(value_states, -1, bsz)
 
-        proj_shape = (bsz * self.num_heads, -1, self.head_dim)
-        query_states = query_states.reshape(*proj_shape)
-        key_states = key_states.reshape(*proj_shape)
-        value_states = value_states.reshape(*proj_shape)
+        query_states = query_states.view(batch_size, patches, self.num_heads, self.head_dim).transpose(1, 2)
+        key_states = key_states.view(batch_size, patches, self.num_heads, self.head_dim).transpose(1, 2)
+        value_states = value_states.view(batch_size, patches, self.num_heads, self.head_dim).transpose(1, 2)
 
-        src_len = key_states.size(1)
-        attn_weights = torch.bmm(query_states, key_states.transpose(1, 2))
+        cos, sin = position_embeddings
+        query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
+
+        attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) * self.scaling
 
         if attention_mask is not None:
-            if attention_mask.size() != (bsz, 1, tgt_len, src_len):
-                raise ValueError(
-                    f"Attention mask should be of size {(bsz, 1, tgt_len, src_len)}, but is {attention_mask.size()}"
-                )
-            attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len)
+            attention_mask = attention_mask[:, :, :, : key_states.shape[-2]]
             attn_weights = attn_weights + attention_mask
-            attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
 
         attn_weights = nn.functional.softmax(attn_weights, dim=-1)
-        
-        attn_weights_reshaped = None
-        if output_attentions:
-            attn_weights_reshaped = attn_weights.view(bsz, self.num_heads, tgt_len, src_len)
-            attn_weights = attn_weights_reshaped.view(bsz * self.num_heads, tgt_len, src_len)
+        attn_weights = nn.functional.dropout(attn_weights, p=self.dropout, training=self.training)
 
-        attn_probs = nn.functional.dropout(attn_weights, p=self.dropout, training=self.training)
+        attn_output = torch.matmul(attn_weights, value_states)
+        attn_output = attn_output.transpose(1, 2).contiguous()
 
-        attn_output = torch.bmm(attn_probs, value_states)
+        attn_output = attn_output.reshape(batch_size, patches, -1).contiguous()
+        attn_output = self.o_proj(attn_output, gating_outputs)
 
-        attn_output = attn_output.view(bsz, self.num_heads, tgt_len, self.head_dim)
-        attn_output = attn_output.transpose(1, 2)
-        attn_output = attn_output.reshape(bsz, tgt_len, embed_dim)
+        return attn_output, attn_weights
 
-        attn_output = self.out_proj(attn_output, gating_outputs)
 
-        return attn_output, attn_weights_reshaped
-    
-
-class ViTMoELayer(nn.Module):
-    def __init__(self, config: CLIPVisionConfig, num_experts: int, r_main: int, rank_per_expert: int, artifact_expert_idx: int, svd_dropout: float):
+class DINOv3ViTMoELayer(nn.Module):
+    def __init__(self, config: DINOv3ViTConfig, num_experts: int, r_main: int, rank_per_expert: int, artifact_expert_idx: int, svd_dropout: float):
         super().__init__()
-        self.self_attn = ViTMoEAttention(config, num_experts, r_main, rank_per_expert, artifact_expert_idx, svd_dropout)
-        self.layer_norm1 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.mlp = CLIPMLP(config)
-        self.layer_norm2 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
-    def forward(self, hidden_states: torch.Tensor, gating_outputs: Dict[str, torch.Tensor], attention_mask: Optional[torch.Tensor] = None):
+        self.norm1 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.attention = DINOv3ViTMoEAttention(config, num_experts, r_main, rank_per_expert, artifact_expert_idx, svd_dropout)
+        self.layer_scale1 = DINOv3ViTLayerScale(config)
+        self.drop_path = DINOv3ViTDropPath(config.drop_path_rate) if config.drop_path_rate > 0.0 else nn.Identity()
+
+        self.norm2 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+
+        if config.use_gated_mlp:
+            self.mlp = DINOv3ViTGatedMLP(config)
+        else:
+            self.mlp = DINOv3ViTMLP(config)
+            
+        self.layer_scale2 = DINOv3ViTLayerScale(config)
+        
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        gating_outputs: Dict[str, torch.Tensor],
+        attention_mask: Optional[torch.Tensor] = None,
+        position_embeddings: Optional[tuple[torch.Tensor, torch.Tensor]] = None,
+    ) -> torch.Tensor:
+        # Attention with residual connection
         residual = hidden_states
-        hidden_states = self.layer_norm1(hidden_states)
-
-        # Pass attention_mask to self_attn
-        hidden_states, attn_weights = self.self_attn(
-            hidden_states=hidden_states, 
-            gating_outputs=gating_outputs,
-            attention_mask=attention_mask
+        hidden_states = self.norm1(hidden_states)
+        hidden_states, _ = self.attention(
+            hidden_states, 
+            gating_outputs, 
+            attention_mask=attention_mask, 
+            position_embeddings=position_embeddings
         )
+        hidden_states = self.layer_scale1(hidden_states)
+        hidden_states = self.drop_path(hidden_states) + residual
 
-        hidden_states = residual + hidden_states
-
+        # MLP with residual connection
         residual = hidden_states
-        hidden_states = self.layer_norm2(hidden_states)
+        hidden_states = self.norm2(hidden_states)
         hidden_states = self.mlp(hidden_states)
-        hidden_states = residual + hidden_states
+        hidden_states = self.layer_scale2(hidden_states)
+        hidden_states = self.drop_path(hidden_states) + residual
 
-        # Maintain the return value format consistent with the official EncoderLayer (tuple)
-        return (hidden_states, ) 
+        return hidden_states
 
 
 class SVDMoeLinear(nn.Module):

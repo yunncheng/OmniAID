@@ -33,6 +33,9 @@ import utils
 from utils import NativeScalerWithGradNormCount as NativeScaler, profile_model
 from utils import str2bool, remap_checkpoint_keys
 import models.OmniAID as OmniAID
+import models.OmniAID_LoRA as OmniAID_LoRA
+import models.OmniAID_DINO as OmniAID_DINO
+import models.OmniAID_DINO_LoRA as OmniAID_DINO_LoRA
 import csv
 import warnings
 
@@ -49,11 +52,7 @@ def get_args_parser():
     # Model parameters
     parser.add_argument('--model', default='AIDE', type=str, metavar='MODEL',
                         help='Name of model to train')
-    parser.add_argument('--resnet_path', default=None, type=str, metavar='MODEL',
-                        help='Path of resnet model')
-    parser.add_argument('--convnext_path', default=None, type=str, metavar='MODEL',
-                        help='Path of ConvNeXt of model ')
-    
+                
     # EMA related parameters
     parser.add_argument('--model_ema', type=str2bool, default=False)
     parser.add_argument('--model_ema_decay', type=float, default=0.9999, help='')
@@ -96,7 +95,8 @@ def get_args_parser():
                         help='Use AutoAugment policy. "v0" or "original". " + "(default: rand-m9-mstd0.5-inc1)')
     parser.add_argument('--smoothing', type=float, default=0.1,
                         help='Label smoothing (default: 0.1)')
-    
+    parser.add_argument('--img_size', type=int, default=336,
+                        help='Image size to resize input images to.')    
     parser.add_argument('--train_interpolation', type=str, default='bicubic',
                         help='Training interpolation (random, bilinear, bicubic default: "bicubic")')
 
@@ -218,6 +218,15 @@ def create_model_and_ema(args, device):
     if args.model == "OmniAID":
         print(f"Initializing OmniAID model with {args.num_experts} experts and {args.rank_per_expert} ranks per expert.")
         model = OmniAID.__dict__["OmniAID"](config=args)
+    elif args.model == "OmniAID_LoRA":
+        print(f"Initializing OmniAID_LoRA model with {args.num_experts} experts and {args.rank_per_expert} ranks per expert.")
+        model = OmniAID_LoRA.__dict__["OmniAID_LoRA"](config=args)
+    elif args.model == "OmniAID_DINO":
+        print(f"Initializing OmniAID_DINO model with {args.num_experts} experts and {args.rank_per_expert} ranks per expert.")
+        model = OmniAID_DINO.__dict__["OmniAID_DINO"](config=args) 
+    elif args.model == "OmniAID_DINO_LoRA":
+        print(f"Initializing OmniAID_DINO_LoRA model with {args.num_experts} experts and {args.rank_per_expert} ranks per expert.")
+        model = OmniAID_DINO_LoRA.__dict__["OmniAID_DINO_LoRA"](config=args) 
     else:
         raise ValueError(f"Unknown model: {args.model}")
         
@@ -281,7 +290,7 @@ def create_dataloaders(args, load_train=True, load_val=True):
 
     domain2label = None
 
-    if "Mirage-Train" in args.data_path:
+    if "Mirage" in args.data_path:
         domain2label = {'Human': 0, 'Animal': 1, 'Object': 2, 'Scene': 3, 'Anime': 4}
     
     elif "GenImage_sd14_classfied" in args.data_path:
@@ -298,7 +307,10 @@ def create_dataloaders(args, load_train=True, load_val=True):
             print("Combining the following training datasets:")
             for data_path in data_paths:
                 print(f" - Loading {data_path}")
-                subset = GenerativeImageDataset(root=data_path, is_train=True, category2label=domain2label, real_folder_name=real_folder_name_train, fake_folder_name=fake_folder_name_train)
+                subset = GenerativeImageDataset(root=data_path, is_train=True, category2label=domain2label,
+                        resolution=args.img_size, model_name=args.model,
+                        real_folder_name=real_folder_name_train, fake_folder_name=fake_folder_name_train
+                        )
                 list_of_datasets.append(subset)
             dataset_train = ConcatDataset(list_of_datasets)
             print(f"\nTotal combined training samples: {len(dataset_train)}")
@@ -317,16 +329,22 @@ def create_dataloaders(args, load_train=True, load_val=True):
                 for train_folder in specific_folders:
                     data_path = os.path.join(args.data_path, train_folder)
                     print(f" - Loading {train_folder}")
-                    subset = GenerativeImageDataset(root=data_path, is_train=True, category2label=domain2label, real_folder_name=real_folder_name_train, fake_folder_name=fake_folder_name_train)
+                    subset = GenerativeImageDataset(root=data_path, is_train=True, category2label=domain2label, 
+                            resolution=args.img_size, model_name=args.model, 
+                            real_folder_name=real_folder_name_train, fake_folder_name=fake_folder_name_train
+                            )
                     list_of_datasets.append(subset)
                 dataset_train = ConcatDataset(list_of_datasets)
                 print(f"\nTotal combined training samples: {len(dataset_train)}")
             
             # For any other single folder dataset
             else:
-                dataset_train = GenerativeImageDataset(root=args.data_path, is_train=True, category2label=domain2label, real_folder_name=real_folder_name_train, fake_folder_name=fake_folder_name_train)
+                dataset_train = GenerativeImageDataset(root=args.data_path, is_train=True, category2label=domain2label, 
+                        resolution=args.img_size, model_name=args.model, 
+                        real_folder_name=real_folder_name_train, fake_folder_name=fake_folder_name_train
+                        )
 
-        sampler_train = torch.utils.data.DistributedSampler(dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True, seed=args.seed)
+        sampler_train = torch.utils.data.DistributedSampler(dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=False, seed=args.seed)
         data_loader_train = torch.utils.data.DataLoader(
             dataset_train, sampler=sampler_train,
             batch_size=args.batch_size, num_workers=args.num_workers,
@@ -336,7 +354,10 @@ def create_dataloaders(args, load_train=True, load_val=True):
 
     if load_val and not args.disable_eval and args.eval_data_path:
         real_folder_name_eval, fake_folder_name_eval = FOLDER_NAMES["GenImage" if "GenImage" in args.eval_data_path else "default"]
-        dataset_val = GenerativeImageDataset(root=args.eval_data_path, is_train=False, category2label=domain2label, real_folder_name=real_folder_name_eval, fake_folder_name=fake_folder_name_eval)
+        dataset_val = GenerativeImageDataset(root=args.eval_data_path, is_train=False, category2label=domain2label, 
+                resolution=args.img_size, model_name=args.model, 
+                real_folder_name=real_folder_name_eval, fake_folder_name=fake_folder_name_eval
+                )
         
         if args.dist_eval:
             if len(dataset_val) % num_tasks != 0:
@@ -423,7 +444,7 @@ def run_training_loop(args, model, model_without_ddp, model_ema, n_parameters, d
         if data_loader_val is not None:
             if args.dist_eval:
                 data_loader_val.sampler.set_epoch(epoch)
-            test_stats, acc, real_acc, fake_acc, ap, f1, fnr = evaluate(data_loader_val, model, device)
+            test_stats, acc, real_acc, fake_acc, ap, f1, fnr = evaluate(data_loader_val, model, device, args)
             print(f"Accuracy of the model on the {len(dataset_val)} test images: {test_stats['acc1']:.1f}%, ap: {ap}.")
             if max_accuracy < test_stats["acc1"]:
                 max_accuracy = test_stats["acc1"]
@@ -447,7 +468,7 @@ def run_training_loop(args, model, model_without_ddp, model_ema, n_parameters, d
             
             # repeat testing routines for EMA, if ema eval is turned on
             if args.model_ema and args.model_ema_eval:
-                test_stats_ema, acc, real_acc, fake_acc, ap, f1, fnr = evaluate(data_loader_val, model, device)
+                test_stats_ema, acc, real_acc, fake_acc, ap, f1, fnr = evaluate(data_loader_val, model, device, args)
                 print(f"Accuracy of the model EMA on {len(dataset_val)} test images: {test_stats_ema['acc1']:.1f}%, ap: {ap}")
                 if max_accuracy_ema < test_stats_ema["acc1"]:
                     max_accuracy_ema = test_stats_ema["acc1"]
@@ -476,7 +497,7 @@ def run_training_loop(args, model, model_without_ddp, model_ema, n_parameters, d
 
 
 
-def load_and_merge_expert_weights(model_without_ddp, config_path):
+def load_and_merge_expert_weights(model_name, model_without_ddp, config_path):
     """
     Merges expert weights based on a flexible JSON configuration file
     and loads them directly into the provided model instance.
@@ -503,7 +524,7 @@ def load_and_merge_expert_weights(model_without_ddp, config_path):
             
         print(f"Loading weights for expert {expert_idx} from: {expert_checkpoint_path}")
         
-        expert_checkpoint = torch.load(expert_checkpoint_path, map_location='cpu')
+        expert_checkpoint = torch.load(expert_checkpoint_path, map_location='cpu', weights_only=False)
         
         if 'model' in expert_checkpoint:
             expert_state_dict = expert_checkpoint['model']
@@ -513,7 +534,12 @@ def load_and_merge_expert_weights(model_without_ddp, config_path):
             expert_state_dict = expert_checkpoint
         
         # Find and transplant the weights for the current expert
-        expert_pattern = re.compile(f'[USV]_experts\\.{expert_idx}$')
+        
+        if "LoRA" in model_name:
+            expert_pattern = re.compile(f'lora_[AB]_experts\\.{expert_idx}$')
+        else:
+            expert_pattern = re.compile(f'[USV]_experts\\.{expert_idx}$') 
+        
         keys_to_transfer = [key for key in expert_state_dict if expert_pattern.search(key)]
 
         print(keys_to_transfer)
@@ -553,7 +579,7 @@ def run_stage1_hard_sampling(args):
 
                 train_domains.extend([os.path.join(data_path, folder) for folder in specific_folders])
             
-            elif "Mirage-Train" in data_path and len(sub_domains) == 5:
+            elif "Mirage" in data_path and len(sub_domains) == 5:
                 specific_folders = ["Human", "Animal", "Object", "Scene", "Anime"]
                 train_domains.extend([os.path.join(data_path, folder) for folder in specific_folders])
             
@@ -625,11 +651,11 @@ def run_stage1_hard_sampling(args):
 
 
 def run_stage2_router_training(args):
-    assert args.model == 'OmniAID', "Stage 2 is only for the 'OmniAID' model."
+    assert 'OmniAID' in args.model, "Stage 2 is only for the 'OmniAID'-style model."
     device = setup_for_training(args)
     
     args.output_dir = os.path.join(args.output_dir , "router")
-    args.log_dir = os.path.join(args.log_dir , "router")   
+    args.log_dir = os.path.join(args.log_dir , "router")
     
     model, model_without_ddp, model_ema, n_parameters = create_model_and_ema(args, device)
     # Set the model to router training mode
@@ -638,13 +664,13 @@ def run_stage2_router_training(args):
 
     # Continue training
     if args.pretrained_checkpoint:
-        checkpoint = torch.load(args.pretrained_checkpoint, map_location='cpu')
+        checkpoint = torch.load(args.pretrained_checkpoint, map_location='cpu', weights_only=False)
         model_without_ddp.load_state_dict(checkpoint['model'], strict=True)
     
     # Starting a new Stage 2 run from merged Stage 1 experts
     else:
         assert args.moe_config_path, "For Stage 2, a merge config JSON file must be provided via --moe_config_path."
-        model_without_ddp = load_and_merge_expert_weights(model_without_ddp, args.moe_config_path)
+        model_without_ddp = load_and_merge_expert_weights(args.model, model_without_ddp, args.moe_config_path)
 
     optimizer, criterion, loss_scaler, mixup_fn = create_optimizer_criterion_scaler(args, model_without_ddp)
 
@@ -677,7 +703,7 @@ def run_eval(args):
     real_folder_name_eval, fake_folder_name_eval = FOLDER_NAMES["GenImage" if "GenImage" in args.eval_data_path else "default"]
 
     domain2label = None
-    if "Mirage-Test" in args.eval_data_path:
+    if "Mirage" in args.eval_data_path:
         domain2label = {'Human': 0, 'Animal': 1, 'Object': 2, 'Scene': 3, 'Anime': 4}
     
     elif "GenImage_sd14_classfied" in args.eval_data_path:
@@ -725,7 +751,10 @@ def run_eval(args):
     for v_id, val in enumerate(vals):
         
         eval_data_path = os.path.join(args.eval_data_path, val)
-        dataset_val = GenerativeImageDataset(root=eval_data_path, is_train=False, category2label=domain2label, real_folder_name=real_folder_name_eval, fake_folder_name=fake_folder_name_eval)
+        dataset_val = GenerativeImageDataset(root=eval_data_path, is_train=False, category2label=domain2label, 
+                resolution=args.img_size, model_name=args.model, 
+                real_folder_name=real_folder_name_eval, fake_folder_name=fake_folder_name_eval
+                )
 
         if args.dist_eval:
             if len(dataset_val) % num_tasks != 0:
@@ -746,7 +775,7 @@ def run_eval(args):
             drop_last=False
         )
 
-        test_stats, acc, real_acc, fake_acc, ap, f1, fnr = evaluate(data_loader_val, model, device)
+        test_stats, acc, real_acc, fake_acc, ap, f1, fnr = evaluate(data_loader_val, model, device, args)
         print(f"Accuracy of the network on {len(dataset_val)} test images: {test_stats['acc1']:.5f}%")
     
         print(f"test dataset is {val} acc: {acc}, real acc: {real_acc}, fake acc: {fake_acc}, ap: {ap}, f1: {f1}, fnr: {fnr}")
@@ -826,11 +855,11 @@ def run_standard_training(args):
 
     # Continue training
     if args.pretrained_checkpoint:
-        checkpoint = torch.load(args.pretrained_checkpoint, map_location='cpu')
+        checkpoint = torch.load(args.pretrained_checkpoint, map_location='cpu', weights_only=False)
         model_without_ddp.load_state_dict(checkpoint['model'], strict=True)
-
+        
     # Resume training
-    elif args.resume:
+    if args.resume:
         utils.auto_load_model(args=args, model=model, model_without_ddp=model_without_ddp,
                               optimizer=optimizer, loss_scaler=loss_scaler, model_ema=model_ema)
     

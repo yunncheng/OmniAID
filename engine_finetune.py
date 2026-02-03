@@ -16,6 +16,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from timm.data import Mixup
 from timm.utils import accuracy, ModelEma
+from contextlib import nullcontext
 
 import utils
 from utils import adjust_learning_rate
@@ -62,20 +63,15 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         else:
             category_labels = category_labels.to(device, non_blocking=True)
 
-        if use_amp:
-            with torch.cuda.amp.autocast():
-                output = model(samples)
-                if type(model) is DDP:
-                    loss = model.module.get_losses(output, targets, category_labels, criterion)
-                else:
-                    loss = model.get_losses(output, targets, category_labels, criterion)
-                
-        else: # full precision
+        model_engine = model.module if isinstance(model, DDP) else model
+        amp_context = torch.cuda.amp.autocast() if use_amp else nullcontext()
+
+        with amp_context:
             output = model(samples)
-            if type(model) is DDP:
-                loss = model.module.get_losses(output, targets, category_labels, criterion)
+            if "OmniAID" in args.model:
+                loss = model_engine.get_losses(output, targets, category_labels, criterion)
             else:
-                loss = model.get_losses(output, targets, category_labels, criterion)
+                loss = model_engine.get_losses(output, targets, criterion)
 
         if isinstance(output, dict):
             output = output["cls"]
@@ -166,7 +162,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
 
 
 @torch.no_grad()
-def evaluate(data_loader, model, device, use_amp=False):
+def evaluate(data_loader, model, device, args=None, use_amp=False):
     criterion = torch.nn.CrossEntropyLoss()
 
     metric_logger = utils.MetricLogger(delimiter="  ")
@@ -177,30 +173,21 @@ def evaluate(data_loader, model, device, use_amp=False):
 
     start_time = time.time()
 
-    for index, batch in enumerate(metric_logger.log_every(data_loader, 10, header)):
-        images = batch[0]
-        target = batch[1]
+    for index, (samples, targets, _, category_labels) in enumerate(metric_logger.log_every(data_loader, 10, header)):
+        samples = samples.to(device, non_blocking=True)
+        targets = targets.to(device, non_blocking=True)
+        category_labels = category_labels.to(device, non_blocking=True)
 
-        category_label = batch[3]
-        category_label = category_label.to(device, non_blocking=True)
+        model_engine = model.module if isinstance(model, DDP) else model
+        amp_context = torch.cuda.amp.autocast() if use_amp else nullcontext()
 
-        images = images.to(device, non_blocking=True)
-        target = target.to(device, non_blocking=True)
-
-        if use_amp:
-            with torch.cuda.amp.autocast():
-                output = model(images)
-                if type(model) is DDP:
-                    loss = model.module.get_losses(output, target, category_label, criterion)
-                else:
-                    loss = model.get_losses(output, target, category_label, criterion)
-                
-        else: # full precision
-            output = model(images)
-            if type(model) is DDP:
-                loss = model.module.get_losses(output, target, category_label, criterion)
+        with amp_context:
+            output = model(samples)
+            if "OmniAID" in args.model:
+                loss = model_engine.get_losses(output, targets, category_labels, criterion)
             else:
-                loss = model.get_losses(output, target, category_label, criterion)
+                loss = model_engine.get_losses(output, targets, criterion)
+                
 
         if isinstance(output, dict):
             output = output["cls"]
@@ -215,16 +202,16 @@ def evaluate(data_loader, model, device, use_amp=False):
 
         if index == 0:
             predictions = output
-            labels = target
+            labels = targets
         else:
             predictions = torch.cat((predictions, output), 0)
-            labels = torch.cat((labels, target), 0)
+            labels = torch.cat((labels, targets), 0)
 
         torch.cuda.synchronize()
 
-        acc1, acc5 = accuracy(output, target, topk=(1, 2))
+        acc1, acc5 = accuracy(output, targets, topk=(1, 2))
 
-        batch_size = images.shape[0]
+        batch_size = samples.shape[0]
         if loss_dict is not None:
             for key, value in loss_dict.items():
                 metric_logger.update(**{key: value.item()})

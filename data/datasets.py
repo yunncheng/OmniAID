@@ -31,14 +31,15 @@ class GenerativeImageDataset(Dataset):
     """A unified and robust PyTorch Dataset class for detecting AI-generated images."""
     def __init__(self, root: str, is_train: bool,
                  label: int = None, category2label: int = None,
-                 resolution: int = 336,
+                 resolution: int = 336, model_name: str = None,
                  real_folder_name: str = '0_real', fake_folder_name: str = '1_fake'):
 
         self.root = root
         self.is_train = is_train
         self.resolution = resolution
+        self.mean = [0.485, 0.456, 0.406] if "DINO" in model_name else [0.48145466, 0.4578275, 0.40821073]
+        self.std = [0.229, 0.224, 0.225] if "DINO" in model_name else [0.26862954, 0.26130258, 0.27577711]
         self.data_list = []
-        
         self.explicit_label = label
         self.category2label = category2label
 
@@ -53,18 +54,18 @@ class GenerativeImageDataset(Dataset):
 
 
     def _init_transforms(self):
-        self.train_transform = transforms.Compose([
+        self.train_transform = transforms.Compose([ 
             transforms.Resize([512, 512]),
             transforms.Resize([self.resolution, self.resolution]),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711]),
+            transforms.Normalize(mean=self.mean, std=self.std)
         ])
 
         self.eval_transform = transforms.Compose([
             transforms.Resize([512, 512]),
             transforms.Resize([self.resolution, self.resolution]),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711])
+            transforms.Normalize(mean=self.mean, std=self.std)
         ])
 
 
