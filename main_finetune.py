@@ -344,7 +344,7 @@ def create_dataloaders(args, load_train=True, load_val=True):
                         real_folder_name=real_folder_name_train, fake_folder_name=fake_folder_name_train
                         )
 
-        sampler_train = torch.utils.data.DistributedSampler(dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=False, seed=args.seed)
+        sampler_train = torch.utils.data.DistributedSampler(dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True, seed=args.seed)
         data_loader_train = torch.utils.data.DataLoader(
             dataset_train, sampler=sampler_train,
             batch_size=args.batch_size, num_workers=args.num_workers,
