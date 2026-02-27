@@ -68,7 +68,7 @@ class OmniAID_DINO_LoRA(nn.Module):
         self.embeddings = DINOv3ViTEmbeddings(vision_config)
         self.rope_embeddings = DINOv3ViTRopePositionEmbedding(vision_config)
         self.layer = nn.ModuleList([
-            DINOv3ViTMoELayer(vision_config, self.num_experts, self.rank_per_expert, self.artifact_expert_idx, self.lora_dropout) 
+            DINOv3ViTMoELayer(vision_config, self.num_experts, self.lora_r_expert, self.artifact_expert_idx, self.lora_dropout) 
             for _ in range(vision_config.num_hidden_layers)
         ])
         self.norm = nn.LayerNorm(vision_config.hidden_size, eps=vision_config.layer_norm_eps)
