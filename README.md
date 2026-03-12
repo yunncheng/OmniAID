@@ -98,14 +98,16 @@ A challenging evaluation set containing images from held-out modern generators, 
 
 ## 📦 Model Zoo
 
-We provide pre-trained checkpoints trained on different datasets. All models use **CLIP-ViT-L/14@336px** as the backbone and are hosted on Hugging Face.
+We provide checkpoints trained on different datasets and different backbones. All models are hosted on Hugging Face.
 
-| Model Variant | Training Data | Filename | Download |
-| :--- | :--- | :--- | :--- |
-| **OmniAID (Recommended)** | **Mirage-Train** (Ours) | `checkpoint_mirage.pth` | [Link](https://huggingface.co/Yunncheng/OmniAID/blob/main/checkpoint_mirage.pth) |
-| **OmniAID-GenImage** | GenImage-SD v1.4 | `checkpoint_genimage_sd14.pth` | [Link](https://huggingface.co/Yunncheng/OmniAID/blob/main/checkpoint_genimage_sd14.pth) |
+| Model Variant | Training Data | Backbone | Filename | Download |
+| :--- | :--- | :--- | :--- | :--- |
+| **OmniAID-DINO (Recommended)** | **Mirage-Train** (Ours)| DINOv3 ViT-L/16 | `checkpoint_omniaid_dino.pth` | [Link](https://huggingface.co/Yunncheng/OmniAID/blob/main/checkpoint_omniaid_dino.pth) |
+| **OmniAID (Recommended)** | **Mirage-Train** (Ours)| CLIP-ViT-L/14@336px | `checkpoint_omniaid_mirage.pth` | [Link](https://huggingface.co/Yunncheng/OmniAID/blob/main/checkpoint_omniaid_mirage.pth) |
+| **OmniAID-GenImage** | GenImage-SD v1.4 | CLIP-ViT-L/14@336px | `checkpoint_omniaid_genimage_sd14.pth` | [Link](https://huggingface.co/Yunncheng/OmniAID/blob/main/checkpoint_omniaid_genimage_sd14.pth) |
 
 > **Note:** 
+> * **OmniAID-DINO (Recommended)** utilizes the DINOv3 ViT-L/16 backbone. It achieves a  lower false positive rate on real images compared to OmniAID while maintaining robust detection generalization.
 > * **OmniAID (Recommended)** is trained on our Mirage-Train, offering the best generalization for real-world "in-the-wild" detection.
 > * **OmniAID-GenImage** is trained on the standard academic dataset GenImage-SD v1.4, primarily for fair comparison with previous baselines.
 
