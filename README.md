@@ -44,6 +44,7 @@ To address these fundamental limitations, OmniAID explicitly decouples semantic 
 
 ## 📢 News
 
+- 🎉 **2026/05/01**: OmniAID has been accepted by **ICML 2026**!
 - 🗓️ **2026/02/03**: OmniAID now supports **LoRA-style fine-tuning** and **DINOv3** backbone. (Please ensure to update your environment according to [`requirements.txt`](./requirements.txt) for the latest features.)
 - 🗓️ **2025/12/10**: We have released a clean inference script for deploying OmniAID as a reward model.
 - 🗓️ **2025/11/30**: We have released training and testing code, along with model weights.  
