@@ -37,13 +37,13 @@ def save_images(images_tensor, input_path, names, original_path_prefix=None, new
     os.makedirs(output_folder, exist_ok=True)
     for idx, image_tensor in enumerate(images_tensor):
         name = names[idx].split('/')[-1]
-        name = name.replace('.jpg', '.png')
+        name = os.path.splitext(names[idx].split('/')[-1])[0] + '.png'
         if torch.is_tensor(image_tensor):
             image_pil = transforms.ToPILImage()(image_tensor)
         else:
             image_pil = image_tensor
         image_path = os.path.join(output_folder, name)
-        image_pil.save(image_path)
+        image_pil.save(image_path, format='PNG')
 
 
 def create_dataloader(image_folder, batch_size=32, shuffle=True, num_workers=2):
