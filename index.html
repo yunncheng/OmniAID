@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OmniAID | Universal AI-Generated Image Detection</title>
+  <meta name="description" content="OmniAID: Decoupling Semantics and Artifacts for Universal AI-Generated Image Detection in the Wild." />
+  <link rel="stylesheet" href="style.css?v=24" />
+</head>
+<body>
+  <div class="page-bg"><span></span><span></span><span></span></div>
+  <nav class="nav">
+    <a class="brand" href="#top"><span class="brand-mark">O</span> OmniAID</a>
+    <div class="nav-links">
+      <a href="#why">Why</a>
+      <a href="#abstract">Abstract</a>
+      <a href="#motivation">Motivation</a>
+      <a href="#method">Method</a>
+      <a href="#results">Results</a>
+      <a href="#analysis">Analysis</a>
+      <a href="#mirage">Mirage</a>
+      <a href="#bibtex">BibTeX</a>
+    </div>
+  </nav>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">ICML 2026 · Universal AIGI Detection</p>
+        <h1>OmniAID</h1>
+        <h2>Decoupling Semantics and Artifacts for Universal AI-Generated Image Detection in the Wild</h2>
+        <p class="authors">
+          Yuncheng Guo<sup>1</sup> · Junyan Ye<sup>2,1</sup> · Chenjue Zhang<sup>3</sup> · Hengrui Kang<sup>4,1</sup> · Haohuan Fu<sup>3</sup> · Conghui He<sup>1</sup> · Weijia Li<sup>3,1*</sup>
+        </p>
+        <p class="affiliations"><sup>1</sup>Shanghai AI Laboratory · <sup>2</sup>Sun Yat-sen University · <sup>3</sup>Tsinghua SIGS · <sup>4</sup>Shanghai Jiao Tong University</p>
+        <div class="actions">
+          <a class="btn primary" href="https://huggingface.co/spaces/Yunncheng/OmniAID-Demo">🚀 Try Online Demo</a>
+          <a class="btn" href="https://arxiv.org/abs/2511.08423">📄 Paper</a>
+          <a class="btn" href="https://github.com/yunncheng/OmniAID">💻 Code</a>
+          <a class="btn" href="https://huggingface.co/Yunncheng/OmniAID">🤗 Models</a>
+          <a class="btn" href="https://huggingface.co/datasets/Yunncheng/Mirage-Test">🗂️ Dataset</a>
+        </div>
+      </div>
+      <div class="hero-card hero-teaser-card">
+        <div class="screen-bar"><i></i><i></i><i></i><span>Core idea</span></div>
+        <img src="assets/schematic.png" alt="OmniAID decouples semantic flaws and generator artifacts" />
+        <p class="hero-note">Decouple <b>what is generated</b> from <b>how it is generated</b>: semantic experts handle content-specific flaws, while the artifact expert remains active for universal forensic traces.</p>
+      </div>
+    </section>
+
+    <section id="why" class="section-card why-feature">
+      <div class="why-feature-copy">
+        <div class="why-head">
+          <p class="section-kicker big-kicker">Why OmniAID?</p>
+          <h2>Universal detection needs both semantic reasoning and artifact evidence.</h2>
+          <p class="why-lead">Previous detectors often collapse under semantic shift because they learn one entangled feature space. OmniAID explicitly separates <b>what is generated</b> from <b>how it is generated</b>, then routes each image to the most relevant evidence.</p>
+        </div>
+        <div class="why-points">
+          <div><strong>Decoupled MoE</strong><span>semantic experts + always-active artifact expert</span></div>
+          <div><strong>Routable evidence</strong><span>interpretable expert routing for mixed or ambiguous content</span></div>
+          <div><strong>Mirage benchmark</strong><span>modern in-the-wild data for high-fidelity generators</span></div>
+        </div>
+      </div>
+      <div class="why-metrics-panel">
+        <article><b>97.2%</b><span>GenImage accuracy</span><em>OmniAID-Mirage</em></article>
+        <article><b>91.4%</b><span>Chameleon accuracy</span><em>in-the-wild benchmark</em></article>
+        <article><b>88.4%</b><span>Mirage-Test accuracy</span><em>modern public test set</em></article>
+        <figure class="why-router-figure compact-router">
+          <img src="assets/router_visualization.png" alt="Router visualization showing semantic expert selection" />
+          <figcaption>Interpretable routing: semantic experts are selected per input, while the artifact expert stays active.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="abstract" class="section-card abstract-card compact-card">
+      <div class="section-title center"><p>Abstract</p><h2>Universal AIGI detection by explicit decoupling</h2></div>
+      <p>Modern image generators are increasingly photorealistic, while existing detectors often learn a single entangled representation that mixes content-dependent semantic flaws with content-agnostic generation artifacts.</p>
+      <p><b>OmniAID</b> introduces a decoupled Mixture-of-Experts architecture with routable semantic experts and an always-active universal artifact expert, trained using a two-stage strategy for robust in-the-wild AIGI detection.</p>
+    </section>
+
+    <section id="motivation" class="section-card">
+      <div class="section-title center"><p>Motivation</p><h2>Semantic gaps and outdated benchmarks limit previous detectors</h2></div>
+      <div class="image-row three motivation-row">
+        <figure><img src="assets/semantic_generalization_heatmap_univfd.png" alt="UnivFD semantic generalization heatmap"><figcaption>UnivFD cross-domain gaps</figcaption></figure>
+        <figure><img src="assets/semantic_generalization_heatmap_effort.png" alt="Effort semantic generalization heatmap"><figcaption>Effort cross-domain gaps</figcaption></figure>
+        <figure><img src="assets/model_performance_discrepancy.png" alt="GenImage to Chameleon collapse"><figcaption>Collapse on real-world data</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="method" class="section-card method-section method-clean">
+      <div class="section-title center">
+        <p>Method</p>
+        <h2>Two-stage decoupled training with a hybrid orthogonal MoE</h2>
+      </div>
+      <figure class="method-hero-figure">
+        <img src="assets/method1.png" alt="OmniAID architecture overview and two-stage training" />
+        <figcaption>Main pipeline: experts are first specialized with targeted evidence, then a lightweight router integrates semantic experts with the universal artifact expert.</figcaption>
+      </figure>
+      <div class="method-explain-grid">
+        <article>
+          <span>01</span>
+          <h3>Expert specialization</h3>
+          <p>Semantic experts focus on domain-specific logic flaws, while the artifact expert learns content-agnostic reconstruction traces from aligned real/fake pairs.</p>
+        </article>
+        <article>
+          <span>02</span>
+          <h3>Router integration</h3>
+          <p>A global router selects the most relevant semantic experts for each input. The artifact expert is always active to provide universal forensic evidence.</p>
+        </article>
+        <figure class="method-mini-figure">
+          <img src="assets/method2.png" alt="SVD-based orthogonal MoE weight composition" />
+          <figcaption>SVD-based orthogonal residual subspace for sparse MoE adaptation.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="results" class="section-card results-visual">
+      <div class="section-title center"><p>Results</p><h2>Robust in-the-wild detection without real/fake bias collapse</h2></div>
+      <div class="results-focus-grid">
+        <figure class="results-main-chart"><img src="assets/chameleon_barplot.png" alt="Chameleon benchmark results"><figcaption>Balanced real/fake detection on Chameleon, where prior detectors often collapse to one side.</figcaption></figure>
+        <div class="results-notes">
+          <article><b>+29.3</b><span>accuracy points over Effort on Chameleon</span></article>
+          <article><b>Balanced</b><span>high real and fake accuracy, instead of detecting only one class</span></article>
+          <article><b>Modern</b><span>OmniAID-Mirage is trained on contemporary in-the-wild data</span></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="analysis" class="section-card">
+      <div class="section-title center"><p>Feature analysis</p><h2>Decoupled feature space and interpretable routing</h2></div>
+      <div class="image-row two">
+        <figure><img src="assets/tsne_combined_labels_effort.png" alt="Effort t-SNE"><figcaption>Effort: entangled baseline representation</figcaption></figure>
+        <figure><img src="assets/tsne_combined_labels_omniaid.png" alt="OmniAID t-SNE"><figcaption>OmniAID: clearer semantic and real/fake structure</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="mirage" class="section-card">
+      <div class="section-title center"><p>Dataset</p><h2>Mirage: a modern benchmark for in-the-wild threats</h2></div>
+      <div class="dataset-layout">
+        <img src="assets/dataset.png" alt="Mirage dataset comparison" />
+        <div class="checklist">
+          <div>✓ Modern generators up to 2025</div>
+          <div>✓ In-the-wild synthetic images</div>
+          <div>✓ Semantic categories: Human, Animal, Object, Scene, Anime</div>
+          <div>✓ Held-out high-fidelity generators for testing</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="bibtex" class="section-card bibtex">
+      <div class="section-title"><p>Citation</p></div>
+      <pre><code>@article{guo2025omniaid,
+  title={OmniAID: Decoupling Semantics and Artifacts for Universal AI-Generated Image Detection in the Wild},
+  author={Guo, Yuncheng and Ye, Junyan and Zhang, Chenjue and Kang, Hengrui and Fu, Haohuan and He, Conghui and Li, Weijia},
+  journal={arXiv preprint arXiv:2511.08423},
+  year={2025}
+}</code></pre>
+    </section>
+  </main>
+
+  <footer>
+    <p>OmniAID · Universal AI-Generated Image Detection in the Wild</p>
+  </footer>
+</body>
+</html>

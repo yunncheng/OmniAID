@@ -1,0 +1,1053 @@
+:root{
+  --ink:#102033;
+  --muted:#5f6f84;
+  --soft:#eef7ff;
+  --blue:#2457df;
+  --blue-dark:#153d9a;
+  --cyan:#22c7d8;
+  --violet:#7c3aed;
+  --panel:rgba(255,255,255,.82);
+  --panel-strong:rgba(255,255,255,.94);
+  --line:rgba(16,32,51,.12);
+  --shadow:0 22px 60px rgba(16,32,51,.11);
+  --shadow-soft:0 12px 32px rgba(16,32,51,.08);
+  --radius:30px;
+  --content:1220px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--ink);
+  background:#f7fbff;
+  line-height:1.6;
+  overflow-x:hidden;
+}
+.page-bg{position:fixed;inset:0;z-index:-2;background:
+  radial-gradient(circle at 12% 8%,rgba(34,199,216,.28),transparent 34%),
+  radial-gradient(circle at 88% 10%,rgba(124,58,237,.24),transparent 32%),
+  linear-gradient(180deg,#fbfdff 0%,#eef7ff 52%,#fbfdff 100%)}
+.page-bg span{position:absolute;border-radius:999px;filter:blur(10px);opacity:.28}
+.page-bg span:nth-child(1){width:480px;height:480px;background:#c7e9ff;top:150px;left:-190px}
+.page-bg span:nth-child(2){width:420px;height:420px;background:#d8ccff;top:560px;right:-150px}
+.page-bg span:nth-child(3){width:560px;height:560px;background:#d5f7ed;bottom:340px;left:18%}
+
+.nav{
+  position:sticky;top:14px;z-index:30;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  width:min(var(--content),calc(100% - 48px));
+  margin:16px auto 0;padding:12px 18px;
+  border:1px solid var(--line);border-radius:999px;
+  background:rgba(255,255,255,.72);backdrop-filter:blur(18px);
+  box-shadow:0 8px 30px rgba(16,32,51,.07)
+}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:850;white-space:nowrap}
+.brand-mark{display:grid;place-items:center;width:34px;height:34px;border-radius:12px;color:white;background:linear-gradient(135deg,var(--blue),var(--cyan));box-shadow:0 10px 24px rgba(37,89,244,.28)}
+.nav-links{display:flex;gap:16px;font-size:14px}.nav-links a{color:#334155;text-decoration:none;font-weight:700}.nav-links a:hover{color:var(--blue)}
+
+main{width:min(var(--content),calc(100% - 48px));margin:0 auto;padding:56px 0 48px}
+.hero{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(400px,.96fr);gap:46px;align-items:center;min-height:560px;margin-bottom:22px}
+.eyebrow{display:inline-flex;align-items:center;margin:0 0 18px;padding:7px 14px;border:1px solid rgba(37,89,244,.16);border-radius:999px;background:rgba(37,89,244,.08);color:#1d4ed8;font-weight:850;font-size:13px;letter-spacing:.055em;text-transform:uppercase}
+.hero h1{font-size:clamp(72px,10vw,132px);letter-spacing:-.08em;line-height:.82;margin:0;background:linear-gradient(135deg,#0b1f39 0%,#244ce8 48%,#20c5d7 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero h2{font-size:clamp(30px,4vw,52px);line-height:1.04;letter-spacing:-.045em;margin:22px 0 18px;max-width:900px}
+.authors{font-size:16px;color:#24364b;margin:0 0 4px;font-weight:680}.affiliations{color:var(--muted);font-size:14px;margin:0 0 24px}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:999px;border:1px solid rgba(15,23,42,.12);background:rgba(255,255,255,.80);box-shadow:0 10px 26px rgba(15,23,42,.07);text-decoration:none;color:#172033;font-weight:850;transition:.18s ease}.btn:hover{transform:translateY(-2px);box-shadow:0 16px 32px rgba(15,23,42,.12)}.btn.primary{background:linear-gradient(135deg,#2559f4,#1bbad0);color:white;border-color:transparent;box-shadow:0 16px 34px rgba(37,89,244,.30)}
+.hero-card{border:1px solid rgba(255,255,255,.72);border-radius:34px;background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(255,255,255,.68));box-shadow:var(--shadow);overflow:hidden}.screen-bar{display:flex;align-items:center;gap:7px;padding:14px 18px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted);font-weight:750}.screen-bar i{width:10px;height:10px;border-radius:50%;background:#ff6b6b}.screen-bar i:nth-child(2){background:#ffd166}.screen-bar i:nth-child(3){background:#06d6a0}.screen-bar span{margin-left:8px}.hero-teaser-card{padding-bottom:20px}.hero-teaser-card img{display:block;width:calc(100% - 38px);margin:22px auto 0;border-radius:24px;background:white;border:1px solid var(--line);box-shadow:var(--shadow-soft)}.hero-note{margin:18px 24px 2px;color:#475569;font-size:15px;line-height:1.55;font-weight:650}.hero-note b{color:#183899}
+
+.section-card{
+  width:100%;
+  margin:30px 0;
+  padding:38px 46px;
+  border:1px solid rgba(255,255,255,.72);
+  border-radius:var(--radius);
+  background:var(--panel);
+  backdrop-filter:blur(18px);
+  box-shadow:var(--shadow);
+}
+.section-title{max-width:880px;margin:0 auto 26px;text-align:center}.section-title p,.section-kicker{margin:0 0 13px;color:var(--blue);font-size:17px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;line-height:1}.section-title h2{margin:0;font-size:clamp(28px,3.3vw,42px);line-height:1.14;letter-spacing:-.038em}.section-title.center{text-align:center}
+
+/* Why card: compact, balanced, and metric-centered */
+.why-feature{display:grid;grid-template-columns:minmax(0,1.06fr) minmax(410px,.94fr);gap:32px;align-items:stretch;padding:18px 48px 42px}.why-feature-copy{display:flex;flex-direction:column}.why-feature-copy .section-kicker{font-size:20px;margin-bottom:36px;letter-spacing:.18em}.why-feature-copy h2{font-size:clamp(44px,4.4vw,64px);line-height:1.22;letter-spacing:-.05em;margin:0 0 44px;max-width:720px}.why-lead{font-size:21px;line-height:1.78;color:#334155;margin:0 0 40px;font-weight:670;max-width:700px}.why-lead b{color:#183899}.why-points{display:grid;gap:16px;margin-top:auto}.why-points div{display:grid;grid-template-columns:165px 1fr;gap:14px;align-items:center;padding:13px 16px;border-radius:18px;background:rgba(255,255,255,.68);border:1px solid rgba(15,23,42,.10)}.why-points strong{font-size:18px;color:#14398f;letter-spacing:-.02em}.why-points span{font-size:15.5px;color:#475569;font-weight:750;line-height:1.38}.why-metrics-panel{display:grid;gap:12px}.why-metrics-panel article{min-height:132px;padding:18px 20px;border-radius:22px;background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(235,246,255,.92));border:1px solid rgba(15,23,42,.11);box-shadow:0 12px 32px rgba(15,23,42,.075);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.why-metrics-panel b{display:block;color:#1744c6;font-size:clamp(40px,3.8vw,54px);line-height:.98;letter-spacing:-.055em;margin:0 0 9px}.why-metrics-panel span{display:block;font-size:17px;font-weight:900;color:#25364d;letter-spacing:-.018em;line-height:1.16}.why-metrics-panel em{display:block;font-style:normal;color:#64748b;margin-top:4px;font-size:13.5px;font-weight:780}.why-router-figure{margin:0;padding:12px;border-radius:22px;background:rgba(255,255,255,.78);border:1px solid var(--line);box-shadow:0 12px 28px rgba(15,23,42,.065)}.why-router-figure img{display:block;width:100%;max-height:220px;object-fit:contain;background:#fffdf6;border-radius:16px;border:1px solid rgba(15,23,42,.08);box-shadow:none}.why-router-figure figcaption{margin:8px auto 0;max-width:420px;text-align:center;color:#536176;font-size:13px;font-weight:800;line-height:1.32}
+
+.abstract-card p{max-width:960px;margin:0 auto 14px;font-size:17px;line-height:1.62;color:#334155;font-weight:500}.abstract-card p:last-child{margin-bottom:0}.compact-card{padding-top:36px;padding-bottom:36px}.compact-card .section-title{margin-bottom:22px}.compact-card .section-title h2{font-size:clamp(28px,3.2vw,40px)}
+
+figure{margin:0}figure img{width:100%;display:block;border-radius:20px;background:white;border:1px solid var(--line);box-shadow:var(--shadow-soft)}figcaption{text-align:center;color:#64748b;font-weight:760;margin-top:10px;font-size:14px;line-height:1.35}.image-row{display:grid;gap:22px}.image-row.three{grid-template-columns:repeat(3,1fr)}.image-row.two{grid-template-columns:repeat(2,1fr)}.motivation-row{gap:20px}.motivation-row figure{display:flex;flex-direction:column}.motivation-row img{height:100%;object-fit:contain;padding:8px}.motivation-row figcaption{font-size:13px;margin-top:8px}
+#motivation .section-title h2,#method .section-title h2,#results .section-title h2,#analysis .section-title h2,#mirage .section-title h2{font-size:clamp(27px,3vw,38px);max-width:860px;margin-left:auto;margin-right:auto}
+
+.method-clean{padding:38px 46px}.method-hero-figure{max-width:1050px;margin:0 auto 24px;padding:14px;border-radius:28px;background:rgba(255,255,255,.72);border:1px solid var(--line);box-shadow:0 16px 42px rgba(15,23,42,.075)}.method-hero-figure img{width:100%;border-radius:22px;box-shadow:none}.method-hero-figure figcaption{max-width:880px;margin:10px auto 0;font-size:14px;font-weight:780;color:#536176}.method-explain-grid{display:grid;grid-template-columns:1fr 1fr 340px;gap:18px;max-width:1050px;margin:0 auto;align-items:stretch}.method-explain-grid article,.method-mini-figure{padding:20px;border-radius:22px;background:rgba(255,255,255,.78);border:1px solid var(--line);box-shadow:0 10px 26px rgba(15,23,42,.055)}.method-explain-grid article span{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:13px;background:linear-gradient(135deg,#2559f4,#22c7d8);color:white;font-weight:900;margin-bottom:14px}.method-explain-grid h3{font-size:21px;line-height:1.15;margin:0 0 9px;letter-spacing:-.025em}.method-explain-grid p{font-size:15.5px;color:#475569;margin:0;font-weight:650;line-height:1.5}.method-mini-figure{display:flex;flex-direction:column;justify-content:center}.method-mini-figure img{width:100%;max-height:150px;object-fit:contain;padding:8px;border-radius:16px;background:white;border:1px solid var(--line);box-shadow:none}.method-mini-figure figcaption{font-size:13px;font-weight:800}
+
+.results-focus-grid{display:grid;grid-template-columns:1.35fr .65fr;gap:24px;align-items:stretch}.results-main-chart img{min-height:340px;object-fit:contain;padding:8px}.results-notes{display:grid;gap:16px}.results-notes article{padding:24px;border-radius:24px;background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(236,247,255,.90));border:1px solid var(--line);box-shadow:0 12px 30px rgba(15,23,42,.06)}.results-notes b{display:block;color:#14398f;font-size:30px;line-height:1;margin-bottom:10px;letter-spacing:-.04em}.results-notes span{color:#475569;font-size:16px;font-weight:760;line-height:1.45}
+.dataset-layout{display:grid;grid-template-columns:1fr .72fr;gap:26px;align-items:center}.dataset-layout img{width:100%;border-radius:20px;background:white;border:1px solid var(--line);box-shadow:var(--shadow-soft)}.checklist{display:grid;gap:13px}.checklist div{padding:15px 16px;border-radius:18px;background:rgba(255,255,255,.72);border:1px solid var(--line);font-weight:750;color:#334155}.bibtex .section-title{text-align:left;margin-left:0}.bibtex pre{margin:0;overflow:auto;padding:22px;border-radius:20px;background:#0d1323;color:#d8e7ff;font-family:"JetBrains Mono",ui-monospace,monospace;font-size:14px;line-height:1.55}footer{text-align:center;color:#64748b;padding:24px 18px 56px;font-weight:700}
+
+@media (max-width:1000px){
+  .nav-links{display:none}.hero,.why-feature,.image-row.three,.image-row.two,.method-explain-grid,.results-focus-grid,.dataset-layout{grid-template-columns:1fr}.hero{min-height:auto}.hero h1{font-size:76px}.section-card,.method-clean,.why-feature{padding:28px}.why-points div{grid-template-columns:1fr}.why-metrics-panel article{min-height:118px}.method-mini-figure img{max-height:220px}
+}
+@media (max-width:620px){
+  .nav{width:min(100% - 24px,var(--content))}main{width:min(100% - 24px,var(--content));padding-top:34px}.hero{gap:28px}.hero h1{font-size:58px}.hero h2{font-size:28px}.actions .btn{width:100%}.section-card{padding:24px;border-radius:24px}.section-title p,.section-kicker{font-size:14px}.section-title h2,#motivation .section-title h2,#method .section-title h2,#results .section-title h2,#analysis .section-title h2,#mirage .section-title h2{font-size:28px}.why-feature-copy h2{font-size:34px}.why-lead{font-size:16.5px}.why-metrics-panel b{font-size:38px}
+}
+
+/* v9 final QA fixes */
+.section-card{scroll-margin-top:104px}
+.abstract-card > p{max-width:960px;margin:0 auto 14px;font-size:17px;line-height:1.62;color:#334155;font-weight:500}
+#abstract .section-title p{color:var(--blue);font-size:17px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;line-height:1;margin:0 0 13px}
+#abstract .section-title h2{font-size:clamp(28px,3.2vw,40px);line-height:1.14;letter-spacing:-.038em}
+@media (max-width:620px){#abstract .section-title p{font-size:14px}}
+
+/* v10 visual balance pass: less oversized typography, compact metrics, consistent section rhythm */
+.section-card{
+  margin:26px 0;
+  padding:34px 42px;
+}
+.section-title{
+  max-width:900px;
+  margin:0 auto 24px;
+}
+.section-title p,
+.section-kicker,
+#abstract .section-title p{
+  font-size:15px;
+  letter-spacing:.16em;
+  margin-bottom:12px;
+}
+.section-title h2,
+#abstract .section-title h2,
+#motivation .section-title h2,
+#method .section-title h2,
+#results .section-title h2,
+#analysis .section-title h2,
+#mirage .section-title h2{
+  font-size:clamp(24px,2.45vw,34px);
+  line-height:1.18;
+  letter-spacing:-.032em;
+  max-width:840px;
+  margin-left:auto;
+  margin-right:auto;
+}
+.compact-card .section-title h2{
+  font-size:clamp(24px,2.45vw,34px);
+}
+.abstract-card p,
+.abstract-card > p{
+  max-width:920px;
+  font-size:16px;
+  line-height:1.66;
+}
+.why-feature{
+  grid-template-columns:minmax(0,1fr) minmax(360px,.86fr);
+  gap:28px;
+  align-items:center;
+  padding:36px 44px;
+}
+.why-feature-copy .section-kicker,
+.why-feature-copy .big-kicker{
+  font-size:15px;
+  letter-spacing:.16em;
+  margin-bottom:12px;
+}
+.why-feature-copy h2{
+  font-size:clamp(30px,3.05vw,42px);
+  line-height:1.10;
+  letter-spacing:-.044em;
+  max-width:620px;
+  margin-bottom:14px;
+}
+.why-lead{
+  font-size:17px;
+  line-height:1.58;
+  max-width:640px;
+  margin-bottom:16px;
+}
+.why-points{
+  gap:10px;
+}
+.why-points div{
+  grid-template-columns:150px 1fr;
+  padding:11px 14px;
+  border-radius:16px;
+}
+.why-points strong{
+  font-size:16px;
+}
+.why-points span{
+  font-size:14px;
+  line-height:1.36;
+}
+.why-metrics-panel{
+  gap:10px;
+}
+.why-metrics-panel article{
+  min-height:104px;
+  padding:14px 18px;
+  border-radius:20px;
+}
+.why-metrics-panel b{
+  font-size:clamp(32px,3vw,42px);
+  line-height:1;
+  letter-spacing:-.05em;
+  margin-bottom:6px;
+}
+.why-metrics-panel span{
+  font-size:15px;
+  line-height:1.16;
+}
+.why-metrics-panel em{
+  font-size:12.5px;
+  margin-top:3px;
+}
+.why-router-figure{
+  padding:10px;
+  border-radius:20px;
+}
+.why-router-figure img{
+  max-height:168px;
+  border-radius:14px;
+}
+.why-router-figure figcaption{
+  font-size:12.5px;
+  max-width:360px;
+  margin-top:7px;
+}
+.method-clean{
+  padding:34px 42px;
+}
+.method-hero-figure{
+  max-width:980px;
+  margin-bottom:22px;
+}
+.method-explain-grid{
+  max-width:980px;
+  grid-template-columns:1fr 1fr 300px;
+}
+.results-notes b{
+  font-size:26px;
+}
+@media (max-width:1000px){
+  .why-feature{grid-template-columns:1fr;padding:30px}.why-feature-copy h2{max-width:none}.why-points div{grid-template-columns:1fr}.method-explain-grid{grid-template-columns:1fr}
+}
+@media (max-width:620px){
+  .section-card{padding:22px;margin:20px 0}.section-title h2,#abstract .section-title h2,#motivation .section-title h2,#method .section-title h2,#results .section-title h2,#analysis .section-title h2,#mirage .section-title h2{font-size:24px}.section-title p,.section-kicker,#abstract .section-title p{font-size:13px}.why-feature-copy h2{font-size:30px}.why-lead{font-size:15.5px}.why-metrics-panel article{min-height:92px}.why-metrics-panel b{font-size:34px}.why-router-figure img{max-height:150px}
+}
+
+/* v11 polish: compact metrics, larger routing visual, and fuller SVD figure */
+.why-feature{
+  grid-template-columns:minmax(0,1.14fr) minmax(320px,.70fr);
+  gap:26px;
+  padding:36px 42px;
+}
+.why-feature-copy h2{
+  font-size:clamp(28px,2.6vw,36px);
+  line-height:1.12;
+  max-width:560px;
+}
+.why-lead{
+  font-size:16px;
+  line-height:1.56;
+  max-width:590px;
+}
+.why-points div{
+  grid-template-columns:138px 1fr;
+  padding:10px 13px;
+}
+.why-points strong{font-size:15px}
+.why-points span{font-size:13.5px}
+.why-metrics-panel{
+  max-width:430px;
+  width:100%;
+  justify-self:end;
+  gap:9px;
+}
+.why-metrics-panel article{
+  min-height:82px;
+  padding:10px 16px;
+  border-radius:18px;
+}
+.why-metrics-panel b{
+  font-size:clamp(28px,2.35vw,34px);
+  line-height:.98;
+  margin-bottom:4px;
+  letter-spacing:-.045em;
+}
+.why-metrics-panel span{
+  font-size:13.5px;
+  line-height:1.1;
+}
+.why-metrics-panel em{
+  font-size:11.5px;
+  margin-top:2px;
+}
+.why-router-figure{
+  padding:10px;
+  border-radius:19px;
+}
+.why-router-figure img{
+  max-height:245px;
+  min-height:205px;
+  object-fit:contain;
+  background:#fffdf6;
+}
+.why-router-figure figcaption{
+  font-size:12px;
+  line-height:1.28;
+  max-width:390px;
+}
+.method-mini-figure{
+  padding:14px;
+}
+.method-mini-figure img{
+  width:100%;
+  height:220px;
+  max-height:none;
+  object-fit:contain;
+  padding:0;
+  border-radius:16px;
+}
+.method-mini-figure figcaption{
+  font-size:12.5px;
+  line-height:1.25;
+  margin-top:8px;
+}
+@media (max-width:1000px){
+  .why-feature{grid-template-columns:1fr;padding:30px}
+  .why-metrics-panel{max-width:none;justify-self:stretch}
+  .why-router-figure img{max-height:260px;min-height:190px}
+  .method-mini-figure img{height:230px}
+}
+@media (max-width:620px){
+  .why-feature-copy h2{font-size:28px}
+  .why-metrics-panel article{min-height:76px}
+  .why-metrics-panel b{font-size:30px}
+  .why-router-figure img{min-height:160px;max-height:220px}
+  .method-mini-figure img{height:200px}
+}
+
+/* v12 layout fixes: remove nested SVD frame and center Results layout */
+.method-explain-grid{
+  grid-template-columns:1fr 1fr 320px;
+  align-items:stretch;
+}
+.method-mini-figure{
+  padding:18px 18px 16px;
+  border-radius:22px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.method-mini-figure img{
+  width:100%;
+  height:235px;
+  max-height:none;
+  object-fit:contain;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+.method-mini-figure figcaption{
+  margin-top:10px;
+  padding:0 4px;
+}
+.results-focus-grid{
+  align-items:center;
+  grid-template-columns:minmax(0,1.42fr) minmax(300px,.58fr);
+}
+.results-main-chart{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.results-main-chart img{
+  min-height:0;
+  height:auto;
+  max-height:410px;
+  object-fit:contain;
+  padding:8px;
+}
+.results-notes{
+  align-self:center;
+  display:grid;
+  gap:16px;
+}
+.results-notes article{
+  min-height:130px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+@media (max-width:1000px){
+  .method-explain-grid{grid-template-columns:1fr}
+  .method-mini-figure img{height:auto;max-height:260px}
+  .results-focus-grid{grid-template-columns:1fr}
+  .results-main-chart img{max-height:none}
+}
+
+
+/* v14 verified tuning: visible layout changes, compact subtitles, larger SVD visual */
+
+/* Move Why OmniAID upward and closer to the top-left visual anchor */
+#why.why-feature{
+  align-items:flex-start !important;
+  padding-top:22px !important;
+  padding-bottom:30px !important;
+  grid-template-columns:minmax(0,1.18fr) minmax(330px,.68fr) !important;
+  gap:24px !important;
+}
+#why .why-feature-copy{
+  padding-top:0 !important;
+  align-self:flex-start !important;
+}
+#why .why-feature-copy .section-kicker,
+#why .why-feature-copy .big-kicker{
+  font-size:20px !important;
+  letter-spacing:.18em !important;
+  margin-bottom:36px !important;
+}
+#why .why-feature-copy h2{
+  font-size:clamp(44px,4.4vw,64px) !important;
+  line-height:1.22 !important;
+  max-width:720px !important;
+  margin-bottom:44px !important;
+}
+#why .why-lead{
+  font-size:21px !important;
+  line-height:1.78 !important;
+  margin-bottom:40px !important;
+  max-width:700px !important;
+}
+
+/* Make all section labels and section subtitles smaller and consistent */
+.section-title{
+  margin-bottom:18px !important;
+  max-width:820px !important;
+}
+.section-title p,
+.section-kicker,
+#abstract .section-title p{
+  font-size:13px !important;
+  letter-spacing:.17em !important;
+  margin-bottom:9px !important;
+  line-height:1 !important;
+}
+.section-title h2,
+#abstract .section-title h2,
+#motivation .section-title h2,
+#method .section-title h2,
+#results .section-title h2,
+#analysis .section-title h2,
+#mirage .section-title h2{
+  font-size:clamp(21px,2.0vw,28px) !important;
+  line-height:1.17 !important;
+  max-width:760px !important;
+  letter-spacing:-.03em !important;
+}
+
+/* Reduce figure captions globally so images can breathe */
+figcaption,
+.method-hero-figure figcaption,
+.results-main-chart figcaption,
+.why-router-figure figcaption,
+.method-mini-figure figcaption,
+.motivation-row figcaption{
+  font-size:12px !important;
+  line-height:1.28 !important;
+  font-weight:720 !important;
+}
+
+/* Method lower row: two text cards smaller, SVD card larger */
+#method .method-explain-grid{
+  grid-template-columns:.76fr .76fr 1.48fr !important;
+  gap:16px !important;
+  max-width:1010px !important;
+  align-items:stretch !important;
+}
+#method .method-explain-grid article{
+  padding:16px 18px !important;
+  min-height:0 !important;
+}
+#method .method-explain-grid article span{
+  width:32px !important;
+  height:32px !important;
+  border-radius:11px !important;
+  font-size:16px !important;
+  margin-bottom:10px !important;
+}
+#method .method-explain-grid h3{
+  font-size:17px !important;
+  line-height:1.15 !important;
+  margin-bottom:7px !important;
+}
+#method .method-explain-grid p{
+  font-size:13.5px !important;
+  line-height:1.43 !important;
+  font-weight:630 !important;
+}
+#method .method-mini-figure{
+  padding:12px 14px 10px !important;
+  justify-content:flex-start !important;
+}
+#method .method-mini-figure img{
+  width:100% !important;
+  height:300px !important;
+  max-height:none !important;
+  object-fit:contain !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+#method .method-mini-figure figcaption{
+  margin-top:7px !important;
+  max-width:300px !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+
+@media (max-width:1000px){
+  #why.why-feature{grid-template-columns:1fr !important;}
+  #method .method-explain-grid{grid-template-columns:1fr !important;}
+  #method .method-mini-figure img{height:auto !important; max-height:300px !important;}
+}
+@media (max-width:620px){
+  .section-title p,.section-kicker,#abstract .section-title p{font-size:12px !important;}
+  .section-title h2,#abstract .section-title h2,#motivation .section-title h2,#method .section-title h2,#results .section-title h2,#analysis .section-title h2,#mirage .section-title h2{font-size:21px !important;}
+  #why .why-feature-copy h2{font-size:27px !important;}
+}
+
+
+/* v15: move only the WHY OMNIAID? kicker upward; leave body text unchanged */
+
+#why .why-feature-copy .section-kicker,
+#why .why-feature-copy .big-kicker{
+  position: relative !important;
+  top: -10px !important;
+  margin-bottom: -1px !important;
+}
+@media (max-width:620px){
+  #why .why-feature-copy .section-kicker,
+  #why .why-feature-copy .big-kicker{
+    top: -6px !important;
+  }
+}
+
+
+/* v16: shrink section headline subtitles, not the blue section labels */
+
+/* These are the large sentence-like subtitles:
+   "Universal detection needs...",
+   "Universal AIGI detection...",
+   "Semantic gaps...",
+   "Two-stage decoupled training...",
+   etc. */
+#why .why-feature-copy h2{
+  font-size:clamp(22px, 1.85vw, 28px) !important;
+  line-height:1.18 !important;
+  letter-spacing:-0.026em !important;
+  max-width:560px !important;
+  margin-bottom:12px !important;
+}
+
+.section-title h2,
+#abstract .section-title h2,
+#motivation .section-title h2,
+#method .section-title h2,
+#results .section-title h2,
+#analysis .section-title h2,
+#mirage .section-title h2{
+  font-size:clamp(19px, 1.70vw, 25px) !important;
+  line-height:1.20 !important;
+  letter-spacing:-0.025em !important;
+  max-width:720px !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+
+.compact-card .section-title h2{
+  font-size:clamp(19px, 1.70vw, 25px) !important;
+}
+
+/* Keep the blue labels such as ABSTRACT / METHOD / WHY OMNIAID readable. */
+.section-title p,
+.section-kicker,
+#abstract .section-title p{
+  font-size:13px !important;
+  letter-spacing:.17em !important;
+}
+
+@media (max-width:620px){
+  #why .why-feature-copy h2{
+    font-size:24px !important;
+  }
+  .section-title h2,
+  #abstract .section-title h2,
+  #motivation .section-title h2,
+  #method .section-title h2,
+  #results .section-title h2,
+  #analysis .section-title h2,
+  #mirage .section-title h2{
+    font-size:20px !important;
+  }
+}
+
+
+/* v17: balanced Why card and slightly smaller sentence-style subtitles */
+
+/* The whole Why block should not be pinned to the top-left.
+   Keep the main text visually centered, and only lift the blue kicker slightly. */
+#why.why-feature{
+  align-items:center !important;
+  padding-top:38px !important;
+  padding-bottom:38px !important;
+  grid-template-columns:minmax(0,1.18fr) minmax(330px,.68fr) !important;
+  gap:26px !important;
+}
+#why .why-feature-copy{
+  padding-top:0 !important;
+  align-self:center !important;
+}
+#why .why-feature-copy .section-kicker,
+#why .why-feature-copy .big-kicker{
+  position:relative !important;
+  top:-6px !important;
+  margin-bottom:4px !important;
+  font-size:13.5px !important;
+  letter-spacing:.17em !important;
+}
+
+/* Slightly smaller sentence-style subtitles. */
+#why .why-feature-copy h2{
+  font-size:clamp(21px,1.65vw,26px) !important;
+  line-height:1.20 !important;
+  letter-spacing:-0.022em !important;
+  max-width:560px !important;
+  margin-bottom:12px !important;
+}
+
+.section-title h2,
+#abstract .section-title h2,
+#motivation .section-title h2,
+#method .section-title h2,
+#results .section-title h2,
+#analysis .section-title h2,
+#mirage .section-title h2{
+  font-size:clamp(18px,1.55vw,23px) !important;
+  line-height:1.22 !important;
+  letter-spacing:-0.022em !important;
+  max-width:700px !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+}
+
+.compact-card .section-title h2{
+  font-size:clamp(18px,1.55vw,23px) !important;
+}
+
+@media (max-width:1000px){
+  #why.why-feature{
+    grid-template-columns:1fr !important;
+    align-items:start !important;
+  }
+  #why .why-feature-copy{
+    align-self:start !important;
+  }
+}
+@media (max-width:620px){
+  #why.why-feature{
+    padding-top:30px !important;
+    padding-bottom:30px !important;
+  }
+  #why .why-feature-copy .section-kicker,
+  #why .why-feature-copy .big-kicker{
+    top:-3px !important;
+  }
+  #why .why-feature-copy h2{
+    font-size:23px !important;
+  }
+  .section-title h2,
+  #abstract .section-title h2,
+  #motivation .section-title h2,
+  #method .section-title h2,
+  #results .section-title h2,
+  #analysis .section-title h2,
+  #mirage .section-title h2{
+    font-size:19px !important;
+  }
+}
+
+
+/* v18: move only the Why OmniAID label upward and make sentence headlines visually subordinate */
+
+/* Keep the whole Why block visually centered. */
+#why.why-feature{
+  align-items:center !important;
+  padding-top:38px !important;
+  padding-bottom:38px !important;
+}
+#why .why-feature-copy{
+  align-self:center !important;
+  padding-top:0 !important;
+}
+
+/* Move ONLY the blue "WHY OMNIAID?" label upward.
+   transform does not move the following title/body. */
+#why .why-feature-copy .section-kicker,
+#why .why-feature-copy .big-kicker{
+  transform:translateY(-28px) !important;
+  margin-bottom:-14px !important;
+  font-size:15px !important;
+  letter-spacing:.18em !important;
+}
+
+/* Sentence-like headings: reduce them so they no longer dominate the blue section labels. */
+#why .why-feature-copy h2{
+  font-size:clamp(19px,1.42vw,23px) !important;
+  line-height:1.22 !important;
+  letter-spacing:-0.018em !important;
+  max-width:560px !important;
+  margin-bottom:12px !important;
+}
+
+.section-title h2,
+#abstract .section-title h2,
+#motivation .section-title h2,
+#method .section-title h2,
+#results .section-title h2,
+#analysis .section-title h2,
+#mirage .section-title h2{
+  font-size:clamp(17px,1.28vw,21px) !important;
+  line-height:1.24 !important;
+  letter-spacing:-0.016em !important;
+  max-width:650px !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  font-weight:850 !important;
+}
+
+.compact-card .section-title h2{
+  font-size:clamp(17px,1.28vw,21px) !important;
+}
+
+/* Keep blue labels visible and consistent. */
+.section-title p,
+.section-kicker,
+#abstract .section-title p{
+  font-size:15px !important;
+  letter-spacing:.17em !important;
+  font-weight:900 !important;
+  margin-bottom:10px !important;
+}
+
+@media (max-width:620px){
+  #why .why-feature-copy .section-kicker,
+  #why .why-feature-copy .big-kicker{
+    transform:translateY(-16px) !important;
+    margin-bottom:-6px !important;
+  }
+  #why .why-feature-copy h2{
+    font-size:21px !important;
+  }
+  .section-title h2,
+  #abstract .section-title h2,
+  #motivation .section-title h2,
+  #method .section-title h2,
+  #results .section-title h2,
+  #analysis .section-title h2,
+  #mirage .section-title h2{
+    font-size:18px !important;
+  }
+}
+
+
+/* v19: move WHY OMNIAID label closer to the upper-left; shrink sentence subtitles another step */
+
+/* Only adjust the blue WHY OMNIAID? label, not the body/title block. */
+#why .why-feature-copy .section-kicker,
+#why .why-feature-copy .big-kicker{
+  transform: translate(-6px, -42px) !important;
+  margin-bottom: -26px !important;
+  font-size: 15px !important;
+  letter-spacing: .18em !important;
+}
+
+/* Sentence-like heading in the WHY block */
+#why .why-feature-copy h2{
+  font-size: clamp(18px, 1.24vw, 21px) !important;
+  line-height: 1.23 !important;
+  letter-spacing: -0.015em !important;
+  max-width: 540px !important;
+  margin-bottom: 10px !important;
+}
+
+/* Sentence-like headings for Abstract / Motivation / Method / Results / etc. */
+.section-title h2,
+#abstract .section-title h2,
+#motivation .section-title h2,
+#method .section-title h2,
+#results .section-title h2,
+#analysis .section-title h2,
+#mirage .section-title h2{
+  font-size: clamp(15px, 1.08vw, 18px) !important;
+  line-height: 1.26 !important;
+  letter-spacing: -0.012em !important;
+  max-width: 620px !important;
+  font-weight: 820 !important;
+}
+
+.compact-card .section-title h2{
+  font-size: clamp(15px, 1.08vw, 18px) !important;
+}
+
+@media (max-width:620px){
+  #why .why-feature-copy .section-kicker,
+  #why .why-feature-copy .big-kicker{
+    transform: translate(-3px, -24px) !important;
+    margin-bottom: -12px !important;
+  }
+  #why .why-feature-copy h2{
+    font-size: 19px !important;
+  }
+  .section-title h2,
+  #abstract .section-title h2,
+  #motivation .section-title h2,
+  #method .section-title h2,
+  #results .section-title h2,
+  #analysis .section-title h2,
+  #mirage .section-title h2{
+    font-size: 16px !important;
+  }
+}
+
+
+/* v20: fix Why label alignment and Method upper/lower edge alignment */
+
+/* WHY OMNIAID?:
+   - move only the blue label further upward
+   - keep its left edge aligned with the headline/body block below
+   - do not drag the whole text block to the upper-left
+*/
+#why.why-feature{
+  align-items:center !important;
+  padding-top:38px !important;
+  padding-bottom:38px !important;
+}
+#why .why-feature-copy{
+  align-self:center !important;
+  padding-top:0 !important;
+}
+#why .why-feature-copy .section-kicker,
+#why .why-feature-copy .big-kicker{
+  display:block !important;
+  transform: translateY(-46px) !important;
+  margin: 0 0 -28px 0 !important;
+  padding-left: 0 !important;
+  left: 0 !important;
+  font-size: 15px !important;
+  letter-spacing: .18em !important;
+}
+
+/* keep sentence-style headline compact */
+#why .why-feature-copy h2{
+  font-size: clamp(18px, 1.24vw, 21px) !important;
+  line-height: 1.23 !important;
+  max-width: 540px !important;
+  margin-bottom: 10px !important;
+}
+
+/* METHOD:
+   make the top hero figure and the bottom explanation row share the same width,
+   so their left and right edges align cleanly
+*/
+#method .method-hero-figure,
+#method .method-explain-grid{
+  max-width: 1040px !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+#method .method-hero-figure{
+  padding: 14px !important;
+  margin-bottom: 24px !important;
+}
+
+#method .method-explain-grid{
+  grid-template-columns: .84fr .84fr 1.32fr !important;
+  gap: 18px !important;
+  align-items: stretch !important;
+}
+
+#method .method-explain-grid article,
+#method .method-mini-figure{
+  min-height: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#method .method-mini-figure img{
+  height: 300px !important;
+  width: 100% !important;
+  object-fit: contain !important;
+}
+
+@media (max-width:1000px){
+  #why .why-feature-copy .section-kicker,
+  #why .why-feature-copy .big-kicker{
+    transform: translateY(-28px) !important;
+    margin-bottom: -14px !important;
+  }
+  #method .method-explain-grid{
+    grid-template-columns: 1fr !important;
+  }
+  #method .method-hero-figure,
+  #method .method-explain-grid{
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width:620px){
+  #why .why-feature-copy .section-kicker,
+  #why .why-feature-copy .big-kicker{
+    transform: translateY(-18px) !important;
+    margin-bottom: -8px !important;
+  }
+}
+
+
+/* v22: push WHY OMNIAID? much higher and align it with the point boxes; align Method top/bottom widths */
+
+/* WHY card: only move the blue label, not the main heading/body. */
+#why .why-feature-copy{
+  align-self:center !important;
+  padding-top:0 !important;
+}
+#why .why-feature-copy .section-kicker,
+#why .why-feature-copy .big-kicker{
+  display:block !important;
+  width:max-content !important;
+  transform: translate(-16px, -74px) !important;
+  margin: 0 0 -54px 0 !important;
+  font-size: 15px !important;
+  letter-spacing: .18em !important;
+}
+/* Make the label align with the left edge of the Decoupled MoE boxes. */
+#why .why-points{
+  margin-left: 0 !important;
+}
+
+/* METHOD: make upper and lower blocks share exactly the same outer width. */
+#method .method-hero-figure,
+#method .method-explain-grid{
+  width: min(100%, 1020px) !important;
+  max-width: 1020px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  box-sizing: border-box !important;
+}
+#method .method-hero-figure{
+  padding: 14px !important;
+  margin-bottom: 24px !important;
+}
+#method .method-explain-grid{
+  grid-template-columns: .86fr .86fr 1.28fr !important;
+  gap: 18px !important;
+}
+
+@media (max-width:1000px){
+  #why .why-feature-copy .section-kicker,
+  #why .why-feature-copy .big-kicker{
+    transform: translate(-10px, -42px) !important;
+    margin-bottom: -28px !important;
+  }
+  #method .method-hero-figure,
+  #method .method-explain-grid{
+    width:100% !important;
+    max-width:100% !important;
+  }
+}
+@media (max-width:620px){
+  #why .why-feature-copy .section-kicker,
+  #why .why-feature-copy .big-kicker{
+    transform: translate(-6px, -24px) !important;
+    margin-bottom: -12px !important;
+  }
+}
+
+
+/* v24: move ONLY the Why OmniAID label upward; keep body text centered and unmoved */
+
+#why.why-feature{
+  align-items:center !important;
+  padding-top:38px !important;
+  padding-bottom:38px !important;
+}
+
+#why .why-feature-copy{
+  position:relative !important;
+  align-self:center !important;
+  padding-left:0 !important;
+  padding-top:0 !important;
+}
+
+/* Absolute positioning removes the blue label from normal flow,
+   so the headline/body block keeps its original vertical centering. */
+#why .why-feature-copy .section-kicker,
+#why .why-feature-copy .big-kicker{
+  position:absolute !important;
+  top:-82px !important;
+  left:0 !important;
+  transform:none !important;
+  margin:0 !important;
+  padding:0 !important;
+  width:max-content !important;
+  font-size:15px !important;
+  letter-spacing:.18em !important;
+  line-height:1 !important;
+}
+
+/* Keep the main Why text block exactly in the regular centered flow. */
+#why .why-feature-copy h2{
+  margin-top:0 !important;
+  margin-bottom:10px !important;
+  font-size:clamp(18px, 1.24vw, 21px) !important;
+  line-height:1.23 !important;
+  max-width:540px !important;
+}
+
+@media (max-width:1000px){
+  #why .why-feature-copy .section-kicker,
+  #why .why-feature-copy .big-kicker{
+    top:-54px !important;
+  }
+}
+
+@media (max-width:620px){
+  #why .why-feature-copy .section-kicker,
+  #why .why-feature-copy .big-kicker{
+    top:-34px !important;
+  }
+}
+
+/* Final override: tune left-column text size and top padding so the why-feature
+   card is filled without overflow. Placed after all media queries to win against
+   earlier #why rules. */
+#why .why-feature-copy{
+  padding-top:12px !important;
+}
+#why .why-feature-copy .section-kicker,
+#why .why-feature-copy .big-kicker{
+  font-size:17px !important;
+  letter-spacing:.12em !important;
+  margin-bottom:22px !important;
+}
+#why .why-feature-copy h2{
+  font-size:clamp(26px,2.8vw,36px) !important;
+  line-height:1.2 !important;
+  max-width:660px !important;
+  margin-bottom:24px !important;
+}
+#why .why-lead{
+  font-size:16.5px !important;
+  line-height:1.62 !important;
+  margin-bottom:26px !important;
+  max-width:640px !important;
+}
