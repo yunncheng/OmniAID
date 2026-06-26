@@ -120,7 +120,7 @@ We provide checkpoints trained on different datasets and different backbones. Al
 > * **OmniAID-DINO v2 (Recommended)** leverages the DINOv3 ViT-L/16 backbone. It delivers the strongest in-the-wild generalization in our tests, at the cost of **~1.5× slower inference** than the CLIP variant (with a similar slowdown in training).
 > * **OmniAID v2 (Recommended)** uses the CLIP-ViT-L/14@336px backbone. It offers excellent in-the-wild generalization at faster inference, making it the preferred choice for throughput-sensitive deployments.
 > * **OmniAID-GenImage** is trained on the standard academic GenImage-SD v1.4 benchmark. Use it to reproduce the paper's reported numbers and for fair comparison with prior baselines.
-> * v2 is the current recommended release. Compared to v1, v2 uses more robust data augmentation and updated training data, yielding better in-the-wild generalization. v1 weights remain hosted for backwards compatibility and paper-number reproduction.
+> * v2 is the current recommended release. Compared to v1, v2 uses more robust data augmentation, yielding better in-the-wild generalization. v1 weights remain hosted for backwards compatibility and paper-number reproduction.
 
 
 
