@@ -2,6 +2,12 @@
 
 <div align="center">
 
+## 🎉 ICML 2026 🎉
+
+</div>
+
+<div align="center">
+
 [![Project Page](https://img.shields.io/badge/Project%20Page-Visit-blueviolet)](https://yunncheng.github.io/OmniAID/)
 [![OmniAID Demo](https://img.shields.io/badge/%F0%9F%A4%97%20OmniAID%20Demo-blue)](https://huggingface.co/spaces/Yunncheng/OmniAID-Demo)
 [![Checkpoints](https://img.shields.io/badge/%F0%9F%A4%97%20Checkpoints-yellow)](https://huggingface.co/Yunncheng/OmniAID/tree/main)
