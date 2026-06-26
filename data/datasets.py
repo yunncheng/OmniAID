@@ -54,19 +54,38 @@ class GenerativeImageDataset(Dataset):
 
 
     def _init_transforms(self):
-        self.train_transform = transforms.Compose([ 
-            transforms.Resize([512, 512]),
+        # Default: v2 single-resize pipeline (Resize directly to the backbone's
+        # native resolution — 336 for CLIP, 448 for DINOv3).
+        self.train_transform = transforms.Compose([
             transforms.Resize([self.resolution, self.resolution]),
             transforms.ToTensor(),
             transforms.Normalize(mean=self.mean, std=self.std)
         ])
 
         self.eval_transform = transforms.Compose([
-            transforms.Resize([512, 512]),
             transforms.Resize([self.resolution, self.resolution]),
             transforms.ToTensor(),
             transforms.Normalize(mean=self.mean, std=self.std)
         ])
+
+        # NOTE: v1 used a double-resize pipeline (Resize 512 -> 512, then Resize
+        # to the backbone's native resolution). Only uncomment the two lines
+        # below if you are loading v1 weights (e.g. checkpoint_omniaid_v1.pth
+        # or checkpoint_omniaid_dino_v1.pth). v1 weights are still hosted on
+        # huggingface for paper reproduction and backwards compatibility;
+        # this dataset defaults to the v2 single-resize pipeline.
+        # self.train_transform = transforms.Compose([
+        #     transforms.Resize([512, 512]),
+        #     transforms.Resize([self.resolution, self.resolution]),
+        #     transforms.ToTensor(),
+        #     transforms.Normalize(mean=self.mean, std=self.std)
+        # ])
+        # self.eval_transform = transforms.Compose([
+        #     transforms.Resize([512, 512]),
+        #     transforms.Resize([self.resolution, self.resolution]),
+        #     transforms.ToTensor(),
+        #     transforms.Normalize(mean=self.mean, std=self.std)
+        # ])
 
 
     def _load_data(self):
